@@ -1,3 +1,5 @@
+import {STICKER_SOUNDS} from './transitions.js';
+
 export class AudioEngine {
   constructor(settings){this.settings=settings;this.cache=new Map();this.effects=new Map();this.sources=[];this.menu=null;this.menuFile='';this.position=0;this.running=false;this.ctx=null;this.buffers=null;this.trackOffsets=[];this.trackRoles=[];this.musicURLs=new Set();this.allowVoices=true;this.songRate=1;this.stemGains=[];}
   async unlock(){
@@ -13,7 +15,7 @@ export class AudioEngine {
   stopMenu(){if(this.menu){this.menu.pause();this.menu.currentTime=0;}this.menu=null;this.menuFile='';}
   async sfx(name,volume=1){try{await this.unlock();const buffer=await this.load(`${name}.ogg`);const s=this.ctx.createBufferSource(),g=this.ctx.createGain();s.buffer=buffer;g.gain.value=volume;s.connect(g);g.connect(this.fx);s.onended=()=>{s.disconnect();g.disconnect();};s.start();}catch(e){console.warn('Sound effect could not play',name,e.message);}}
   async prepare(file){await this.unlock();this.buffers=await Promise.all(['Inst','Voices'].map(n=>this.load(`${file}_${n}.ogg`)));return this.buffers[0].duration*1000;}
-  async warmEffects(){await Promise.all(['intro1','intro2','intro3','introGo','missnote1','missnote2','missnote3','scrollMenu','confirmMenu','cancelMenu','fnf_loss_sfx','thunder_1','thunder_2'].map(n=>this.load(`${n}.ogg`).catch(()=>null)));}
+  async warmEffects(){await Promise.all(['intro1','intro2','intro3','introGo','missnote1','missnote2','missnote3','scrollMenu','confirmMenu','cancelMenu','fnf_loss_sfx','thunder_1','thunder_2',...STICKER_SOUNDS].map(n=>this.load(`${n}.ogg`).catch(()=>null)));}
   startPreview(buffers,offsets,startMs,endMs){
     this.stopPreview();
     const rate=this.ctx.sampleRate;

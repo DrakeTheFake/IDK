@@ -1,6 +1,7 @@
 import {EXPANDED_BASE} from './expanded-content.js';
 import {expandedImage,expandedJSON,loadExpandedAnimation} from './sky-ui.js';
-import {drawSkyAnimation,loadSkyPolishPack} from './sky-polish.js';
+import {drawRepeatingEffect,rollSecret} from './sky-effects.js';
+import {drawCenteredSkyAnimation,loadSkyPolishPack} from './sky-polish.js';
 import {cameraTrack} from './stage-camera.js';
 import {eventEase} from './song-events.js';
 
@@ -18,11 +19,9 @@ const EXPANDED_SCENES={
 
 const sceneCaption=(song,naughtyness)=>'subtitles-data-subtitles-skyplayable-'+song+'-sky'+(naughtyness?'':'-censored')+'.srt';
 const clamp01=value=>Math.max(0,Math.min(1,value));
-export const rollSkyPicoShot=(random=Math.random)=>random()<1/10000;
+export const rollSkyPicoShot=(random=Math.random,mode)=>rollSecret(mode,1/10000,random);
 
 function skyStageScene(id,{naughtyness,subtitles,alternate}) {
-  if(id==='sky-mobile-outro')return {polish:true,duration:15500,fadeIn:0,animations:['mobileSky'],
-    atlases:['mobileSmoke'],sounds:[[1000,'wooshSound'],[3050,'smokinSound'],[3050,'puffySound'],[5000,'wobbly',.4]]};
   if(id==='ugh-sky-stage'||id==='guns-sky-stage'){
     const guns=id==='guns-sky-stage',song=guns?'guns':'ugh';
     return {
@@ -93,12 +92,6 @@ const darnellCamera=[
 
 function scriptStageView(id,elapsed,{art,alternate,naughtyness}){
   const hiddenPair=['player','opponent'];
-  if(id==='sky-mobile-outro')return {
-    hideProps:['babyGradient'],camera:[[0,['opponent',110,50,.85],1000,'sineOut']],
-    actors:[{role:'opponent',asset:art.mobileSky,label:elapsed<12000?'smoke':'high loop',
-      age:Math.max(0,elapsed-(elapsed<12000?1000:12000)),offset:[-208,-620],loop:elapsed>=12000}],
-    smoke:elapsed>=3050&&elapsed<7000?{art:art.mobileSmoke,age:elapsed-3050}:null,
-  };
   if(id==='darnell-alley')return {camera:darnellCamera};
   if(id==='sky-pico-stage'){
     const skyCue=elapsed>=7100?7100:elapsed>=5700?5700:1100;
@@ -183,12 +176,13 @@ export function expandedIntro(choice,{story=false,retry=false,editor=false}={}) 
   if (choice.variant==='sky'&&['senpai','roses','thorns'].includes(choice.baseSong)) return choice.baseSong+'-sky';
   if (choice.baseSong==='stress'&&choice.variant==='pico') return 'stressPicoCutscene';
   if (!story) return null;
+  if(choice.variant==='sky'&&['ugh','guns','stress'].includes(choice.baseSong))return null;
+  if(['wife-forever','sky','manifest'].includes(choice.baseSong)&&choice.variant!=='classic')return null;
   return {ugh:'ughCutscene',guns:'gunsCutscene',stress:choice.character==='pico'?'stressPicoCutscene':'stressCutscene',
     darnell:'darnellCutscene','wife-forever':'wifeforeverCutscene',sky:'skyCutscene',manifest:'manifestCutscene'}[choice.baseSong];
 }
 
 export function expandedOutro(choice,story,{manifestLiquid='water'}={}) {
-  if(choice.baseSong==='sky-mobile'||choice.id==='sky-mobile')return 'sky-mobile-outro';
   if(choice.baseSong==='stress'&&choice.variant==='pico')return 'stress-pico-outro';
   if(choice.baseSong==='manifest'&&choice.variant==='pico'&&manifestLiquid!=='boiling')return 'manifest-pico-outro';
   if (!story) return null;
@@ -198,7 +192,8 @@ export function expandedOutro(choice,story,{manifestLiquid='water'}={}) {
 export function expandedStageIntro(choice,story){
   if(choice.baseSong==='sky'&&choice.variant==='pico')return 'sky-pico-stage';
   if(choice.variant==='sky')return {moderato:'moderato-stage',ugh:'ugh-sky-stage',guns:'guns-sky-stage',stress:'stress-sky-stage'}[choice.baseSong];
-  if(story)return {'wife-forever':'wife-stage',darnell:'darnell-alley'}[choice.baseSong];
+  if(story&&choice.baseSong==='wife-forever'&&choice.variant==='classic')return 'wife-stage';
+  if(story&&choice.baseSong==='darnell'&&!['erect','bf'].includes(choice.variant))return 'darnell-alley';
 }
 
 export class ExpandedCutscenes {
@@ -315,15 +310,14 @@ export class ExpandedCutscenes {
     const {art,id,entry}=current;
     if(id==='wife-stage'){
       if(art.wifeBackdrop)ctx.drawImage(art.wifeBackdrop,0,0,1280,720);
-      if(elapsed<4200)drawSkyAnimation(ctx,art.wifeBf,elapsed,365,100,{scale:.8,label:'intro'});
+      if(elapsed<4200)drawCenteredSkyAnimation(ctx,art.wifeBf,elapsed,'intro',.8);
       else{
-        drawSkyAnimation(ctx,art.wifeSky,elapsed-4200,120,10,{scale:.82,loop:true,label:current.wifeLabel});
+        drawCenteredSkyAnimation(ctx,art.wifeSky,elapsed-4200,current.wifeLabel,.82,true);
         if(art.wifeHearts){
           ctx.save();
           ctx.globalAlpha=.3;
           ctx.globalCompositeOperation='lighter';
-          const picture=art.wifeHearts,x=elapsed*.05%picture.width,y=elapsed*.05%picture.height;
-          for(let tx=x-picture.width;tx<1280;tx+=picture.width)for(let ty=y-picture.height;ty<720;ty+=picture.height)ctx.drawImage(picture,tx,ty);
+          drawRepeatingEffect(ctx,art.wifeHearts,elapsed*.05,elapsed*.05);
           ctx.restore();
         }
       }

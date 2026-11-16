@@ -31,12 +31,15 @@ const GAMEPAD = {
   ...Object.fromEntries([4, 14, 13, 0, 1, 5].map((button, lane) => [SIX_NOTES[lane], [button]])),
 };
 
+import {SECRET_CHANCES} from './sky-effects.js';
+
 export const PREFERENCE_DEFAULTS = Object.freeze({
   naughtyness: true, strumlineBackground: 0, flashingLights: true, cameraZooms: true,
   subtitles: true, autoPause: true, autoFullscreen: false, debugDisplay: 'Off', debugDisplayBG: .5,
   hideMouse: true, fancyPreview: true, previewOnSave: true,
   comboPopup: true, comboSwoosh: true, comboSwooshSound: true, comboSwooshThreshold: 0,
   cacheComboAssets: true, normalShaders: false, skyDisableMenus: false,
+  freeplayStoryCutscenes: false, skySecretChance: 'Original',
   songRate:1, healthDrain:0, missDamage:1, instantFail:false, mirrorNotes:false, noFail:false,
   qtLanguage: 'english', qtSawbladeMode: 'default', qtPlushieButton: true,
 });
@@ -58,6 +61,7 @@ export function normalizePreferences(raw = {}, base = {}) {
   result.offset = limitNumber(raw, 'offset', base.offset || 0, -1500, 1500);
   result.debugDisplay = ['Off', 'Simple', 'Advanced'].includes(raw.debugDisplay) ? raw.debugDisplay : 'Off';
   result.qtSawbladeMode = ['default', 'instakill', 'disabled'].includes(raw.qtSawbladeMode) ? raw.qtSawbladeMode : 'default';
+  result.skySecretChance = SECRET_CHANCES.includes(raw.skySecretChance) ? raw.skySecretChance : 'Original';
   result.qtLanguage = raw.qtLanguage === 'spanish' ? 'spanish' : 'english';
   result.bindings = {keyboard: {}, gamepad: {}};
   for (const [device, defaults] of Object.entries({keyboard: KEYBOARD, gamepad: GAMEPAD})) {
@@ -181,6 +185,7 @@ const PREFERENCES = [
   flag('autoPause', 'Pause on Unfocus', 'Automatically pause when the game loses focus.'),
   flag('autoFullscreen', 'Launch in Fullscreen', 'Enter fullscreen when you start the game.'),
   flag('hideMouse', 'Hide Mouse', 'Hide the pointer when taking a screenshot.', 'screenshots'),
+  flag('freeplayStoryCutscenes', 'Freeplay Story Cutscenes', 'Play the original Story Mode intros when starting the matching songs in Freeplay.'),
   flag('fancyPreview', 'Fancy Preview', 'Show a preview after taking a screenshot.', 'screenshots'),
   flag('previewOnSave', 'Preview on Save', 'Show the screenshot preview after saving the image.', 'screenshots'),
   flag('comboPopup', 'Combo Popup', 'Show the combo popup when you hit ten or more notes in a row.'),
@@ -418,7 +423,8 @@ export class PreferencesMenu {
       action('Reset Modifiers',()=>{for(const key of ['songRate','healthDrain','missDamage','instantFail','mirrorNotes','noFail'])this.change(key,PREFERENCE_DEFAULTS[key]);}),
     ];
     if (this.page === 'rewired') return [...REWIRED.filter(row => this.capabilities[row.capability]), action('Exit', () => this.back())];
-    if (this.page === 'sky') return [flag('skyDisableMenus', 'Disable Menus', 'Revert the title and main menu to the original game style.'), action('Exit', () => this.back())];
+    if (this.page === 'sky') return [flag('skyDisableMenus', 'Disable Menus', 'Revert the title and main menu to the original game style.'),
+      choices('skySecretChance', 'Secret Chances', 'Use the original odds, guarantee the secret outcomes, or disable them.', SECRET_CHANCES), action('Exit', () => this.back())];
     if (this.page === 'lag') return [number('offset','Offset (Global)','Adjust the timing offset in milliseconds.',-1500,1500,1), action('Reset Offset',() => this.change('offset',0)), action('Offset Calibration',() => this.beginLag('calibrate')), action('Test',() => this.beginLag('test'))];
     if (this.page === 'save') return [
       ...(this.exportSave ? [action('Export Save Data', () => this.exportSave())] : []),
@@ -922,7 +928,7 @@ export class ComboFeedback {
     this.pending = {due: time + 937.5 + sustain, combo: this.series, started: null};
   }
 
-  draw(ctx, {time, combo, bpm = 100, pixel = false, botplay = false, middlescroll = false, classicCombo} = {}) {
+  draw(ctx, {time, combo, bpm = 100, pixel = false, botplay = false, middlescroll = false, classicCombo, anchor = [640, 290]} = {}) {
     const popupAge = time - this.popupAt;
     const fadeStart = 60000 / bpm;
     if (this.settings.comboPopup && popupAge >= 0 && popupAge < fadeStart + 200) {
@@ -930,12 +936,12 @@ export class ComboFeedback {
       if (pixel && !image && !this.loading) this.load().catch(() => {});
       if (image) {
         const elapsed = popupAge / 1000;
-        const y = 317 - 150 * elapsed + 300 * elapsed * elapsed;
+        const y = anchor[1] - 34 - 100 * elapsed + 200 * elapsed * elapsed;
         const scale = pixel ? 4 : .6;
         ctx.save();
         ctx.globalAlpha *= 1 - clamp((popupAge - fadeStart) / 200, 0, 1);
         if (pixel) ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(image, 589 + elapsed * 4, y, image.width * scale, image.height * scale);
+        ctx.drawImage(image, anchor[0] - image.width * scale / 2, y, image.width * scale, image.height * scale);
         ctx.restore();
       }
     }

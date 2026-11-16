@@ -23,10 +23,10 @@ export class PixelUI {
   }
   countdownSound(beat){return this.style()[{[-4]:'countdownThree',[-3]:'countdownTwo',[-2]:'countdownOne',[-1]:'countdownGo'}[beat]]?.audioFile?.split('/').at(-1)?.replace(/\.ogg$/,'');}
   countdown(ctx,beat){const def=this.style()[{[-3]:'countdownTwo',[-2]:'countdownOne',[-1]:'countdownGo'}[beat]],img=this.assets.images[def?.assetId];if(!img)return false;const s=def.scale||6;ctx.save();ctx.imageSmoothingEnabled=false;this.assets.image(ctx,def.assetId,(1280-img.width*s)/2,(720-img.height*s)/2,img.width*s,img.height*s);ctx.restore();return true;}
-  rating(ctx,name,combo,y,alpha){
+  rating(ctx,name,combo,y,alpha,center=640){
     const def=this.style()['judgement'+name[0]?.toUpperCase()+name.slice(1)],img=this.assets.images[def?.assetId];if(!img)return false;
-    const s=def.scale||4.2;ctx.save();ctx.globalAlpha*=alpha;ctx.imageSmoothingEnabled=false;this.assets.image(ctx,def.assetId,640-img.width*s/2,y,img.width*s,img.height*s);
-    const digits=(combo==null?'':String(combo).padStart(3,'0')).split('').map(n=>this.style()['comboNumber'+n]),width=digits.reduce((sum,v)=>sum+(this.assets.images[v?.assetId]?.width||0)*s+4,0);let x=640-width/2;
+    const s=def.scale||4.2;ctx.save();ctx.globalAlpha*=alpha;ctx.imageSmoothingEnabled=false;this.assets.image(ctx,def.assetId,center-img.width*s/2,y,img.width*s,img.height*s);
+    const digits=(combo==null?'':String(combo).padStart(3,'0')).split('').map(n=>this.style()['comboNumber'+n]),width=digits.reduce((sum,v)=>sum+(this.assets.images[v?.assetId]?.width||0)*s+4,0);let x=center-width/2;
     for(const digit of digits){const image=this.assets.images[digit?.assetId];if(image){this.assets.image(ctx,digit.assetId,x,y+62,image.width*s,image.height*s);x+=image.width*s+4;}}
     ctx.restore();return true;
   }

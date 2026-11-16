@@ -1,3 +1,4 @@
+import {rollSecret} from './sky-effects.js';
 import {EXPANDED_BASE} from './expanded-content.js';
 import {expandedImage,expandedJSON,loadExpandedAnimation} from './sky-ui.js';
 
@@ -43,6 +44,39 @@ export function drawSkyAnimation(ctx,asset,time,x,y,{scale=1,label,loop=false,no
   ctx.restore();
 }
 
+const labelBoundsCache=new WeakMap();
+
+export function skyAnimationBounds(asset,label){
+  const timeline=asset?.timeline;
+  if(!timeline)return null;
+  let cache=labelBoundsCache.get(timeline);
+  if(!cache)labelBoundsCache.set(timeline,cache=new Map());
+  if(cache.has(label))return cache.get(label);
+  const [first,length]=timeline.labels[label]||[0,timeline.frames.length];
+  let left=Infinity,top=Infinity,right=-Infinity,bottom=-Infinity;
+  for(const frame of timeline.frames.slice(first,first+length)){
+    for(const {m:[a,b,c,d,x,y],r:[,,width,height],rotated,a:alpha} of frame){
+      if(alpha===0)continue;
+      const w=rotated?height:width,h=rotated?width:height;
+      left=Math.min(left,x+Math.min(0,a*w)+Math.min(0,c*h));
+      right=Math.max(right,x+Math.max(0,a*w)+Math.max(0,c*h));
+      top=Math.min(top,y+Math.min(0,b*w)+Math.min(0,d*h));
+      bottom=Math.max(bottom,y+Math.max(0,b*w)+Math.max(0,d*h));
+    }
+  }
+  const bounds=Number.isFinite(left)?[left,top,right-left,bottom-top]:null;
+  cache.set(label,bounds);
+  return bounds;
+}
+
+export function drawCenteredSkyAnimation(ctx,asset,time,label,maxScale,loop=false){
+  const bounds=skyAnimationBounds(asset,label);
+  if(!bounds)return;
+  const [left,top,width,height]=bounds;
+  const scale=Math.min(maxScale,1140/width,660/height);
+  drawSkyAnimation(ctx,asset,time,640-(left+width/2)*scale,360-(top+height/2)*scale,{label,scale,loop});
+}
+
 function atlasFrame(asset,time,fps){
   return asset.frames[Math.floor(time*fps/1000)%asset.frames.length];
 }
@@ -64,7 +98,7 @@ function startSound(audio,buffer,gain=1){
   source.start();
 }
 
-function beatTime(chart,beat){
+export function beatTime(chart,beat){
   const tempo=chart.tempos.findLast(change=>change.beat<=beat);
   return tempo.time+(beat-tempo.beat)*60000/tempo.bpm;
 }
@@ -146,8 +180,9 @@ export class SkyPolish {
       ctx.globalAlpha*=0.5;
       ctx.globalCompositeOperation='lighter';
       ctx.imageSmoothingEnabled=false;
-      for(let y=firstY-height*3;y<720+height*2;y+=height){
-        drawAtlasFrame(ctx,asset,frame,640-width/2-pan,y,worldScale);
+      const left=modulo(640-width/2-pan,width)-width;
+      for(let x=left;x<1280;x+=width)for(let y=firstY-height;y<720;y+=height){
+        ctx.drawImage(asset.image,frame.x,frame.y,frame.width,frame.height,x,y,width,height);
       }
     }else if(effect==='giygas'){
       const asset=this.manifest.giygas,frame=atlasFrame(asset,motion*1000,12);
@@ -158,7 +193,7 @@ export class SkyPolish {
       ctx.globalCompositeOperation='lighter';
       ctx.imageSmoothingEnabled=false;
       for(let x=firstX-width*2;x<1280+width;x+=width){
-        for(let y=firstY-height*2;y<720+height;y+=height)drawAtlasFrame(ctx,asset,frame,x,y,scale);
+        for(let y=firstY-height*2;y<720+height;y+=height)ctx.drawImage(asset.image,frame.x,frame.y,frame.width,frame.height,x,y,width,height);
       }
     }else{
       const elapsed=time-game.skyManifestAt,asset=this.manifestPico[effect];
@@ -244,7 +279,7 @@ export class SkyPolish {
     game.skyManifestBlock=game.beat<168;
     if(game.beat>=160&&game.skyManifestAt==null){
       game.skyManifestAt=beatTime(game.chart,160);
-      game.skyManifestLiquid=random()<.1?'boiling':'water';
+      game.skyManifestLiquid=rollSecret(game.secretChance,.1,random)?'boiling':'water';
       const boiling=game.skyManifestLiquid==='boiling';
       game.skyManifestCues=[
         [0,'runYoPockets','player','cupThrow',1700],

@@ -1,8 +1,16 @@
 export const PATCH_NOTES = [
   {
+    title:'Sky cutscenes and stage fixes',
+    sections:[
+      ['Freeplay','Turn on Freeplay Story Cutscenes in Preferences to see campaign intros. Type SKY to unlock Sky Erect (Lyrics) in Boyfriend’s list. Choose Original, Always, or Never under Sky Reborn for random secrets.'],
+      ['Sky Reborn','Centered the Wife Forever intro and restored Sky’s original Erect outfit. Sky Mobile’s smoking sequence now plays during the song. QT greets Sky and keeps dancing in Blissful. Nene has her speaker in Wife Forever and her rocket in Manifest.'],
+      ['Gameplay','Stickers fill and reveal the screen with original key clicks. Judgments follow the speaker. Darnell punches back on Blazin’ defense notes. The Erect Stress stage restores the seated soldiers and Scenecore Sky’s shot effects.'],
+    ],
+  },
+  {
     title:'Sky Reborn secrets and gameplay',
     sections:[
-      ['Sky Reborn','Stress Sky Mix continues into gameplay. The Pico Shot secret uses the requested 1 in 10,000 odds. Manifest uses separate vocal controls through its water and boiling branches. Sky Mobile has its original outro.'],
+      ['Sky Reborn','Stress Sky Mix continues into gameplay. The Pico Shot secret uses the requested 1 in 10,000 odds. Manifest uses separate vocal controls through its water and boiling branches. Sky Mobile includes its original smoking sequence.'],
       ['Freeplay','The selected difficulty filters the song list. Choose Modifiers under Options to change speed, health drain, miss damage, Instakill, Mirror Notes, or No Fail.'],
       ['Gameplay','Native note splashes, HUD beat pulses, song credits and original sticker art accompany play. The Erect Week 2 cast lights up with lightning and fades back into shadow.'],
     ],

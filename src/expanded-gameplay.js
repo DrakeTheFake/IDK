@@ -28,6 +28,14 @@ export function expandedNote(game,note,time,actors,playSound,miss=false){
       force(side,(special.startsWith('punchlow')?'punchLow':'punchHigh')+(special.endsWith('spin')?2:1));
       force(rival,special.endsWith('blocked')?'block':special.endsWith('dodged')?'dodge':special.endsWith('spin')?'hitSpin':special.startsWith('punchlow')?'hitLow':'hitHigh');
       game.lastStrike=time;game.fightLead=side;
+    }else if(/^(block|dodge|hit)(high|low|spin)$/.test(special)){
+      const jab=special.endsWith('low')?'punchLow':'punchHigh';
+      const variant=game.lastPunch===jab+'1'?2:1;
+      game.lastPunch=jab+variant;
+      force(rival,game.lastPunch);
+      force(side,FIGHT_POSES[special]||special.replace(/(high|low|spin)$/,''));
+      game.fightLead=rival;
+      game.lastStrike=time;
     }else{
       force(side,FIGHT_POSES[special]||(special.startsWith('block')?'block':special.startsWith('dodge')?'dodge':null));
     }

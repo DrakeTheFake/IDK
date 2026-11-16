@@ -1,13 +1,34 @@
 import {expandedImage,loadExpandedAnimation} from './sky-ui.js';
-import {drawSkyAnimation,loadSkyPolishPack} from './sky-polish.js';
+import {beatTime,drawSkyAnimation,loadSkyPolishPack} from './sky-polish.js';
 import {EXPANDED_BASE} from './expanded-content.js';
 
+import {drawRepeatingEffect,rollSecret} from './sky-effects.js';
+
+const mobileSounds=[[1000,'wooshSound'],[3050,'smokinSound'],[3050,'puffySound'],[5000,'wobbly',.4]];
 const candyNames=['taco','packofSkittles','popTart','lollipop','jollyRancher'];
 const clamp=value=>Math.max(0,Math.min(1,value));
 const fract=value=>value-Math.floor(value);
 
 export class SkyDetails {
   async prepare(choice,audio){
+    if(choice.characters?.girlfriend==='scenecoresky-shootin'){
+      this.flashLoading??=loadSkyPolishPack().then(async pack=>{
+        const asset=pack.scenecoreFlashes;
+        this.flashes={...asset,image:await expandedImage(asset.image)};
+      }).catch(error=>{this.flashLoading=null;console.warn(error);});
+      await this.flashLoading;
+    }
+    const mobile=choice.baseSong==='sky-mobile';
+    if(mobile&&!this.mobileLoading){
+      this.mobileLoading=loadSkyPolishPack().then(async pack=>{
+        const [sky,smoke,sounds]=await Promise.all([
+          loadExpandedAnimation(pack.mobileSky),
+          expandedImage(pack.mobileSmoke.image),
+          Promise.all(mobileSounds.map(async ([,name])=>[name,await audio.load(EXPANDED_BASE+pack.audio[name]).catch(()=>null)])),
+        ]);
+        this.mobile={sky,smoke:{...pack.mobileSmoke,image:smoke},sounds:Object.fromEntries(sounds)};
+      }).catch(error=>{this.mobileLoading=null;console.warn(error);});
+    }
     if(!choice.stage?.startsWith('theShift'))return;
     if(!this.loading){
       this.loading=(async()=>{
@@ -21,7 +42,7 @@ export class SkyDetails {
           .filter(name=>pack.audio[name]).map(async name=>[name,await audio.load(EXPANDED_BASE+pack.audio[name]).catch(()=>null)])));
       })().catch(error=>{this.loading=null;console.warn(error);});
     }
-    await this.loading;
+    await Promise.all([this.loading,mobile?this.mobileLoading:null]);
   }
 
   async prepareStickers(choice){
@@ -36,13 +57,24 @@ export class SkyDetails {
   }
 
   update(game,time,actors,random=Math.random){
-    if(game.custom||game.beat<0)return;
+    if(game.custom)return;
     if(game.choice.baseSong==='blissful'){
-      if(time>=980&&!game.skyWaved){
+      const waveAt=game.startTime+980;
+      if(time>=waveAt&&!game.skyWaved){
         game.skyWaved=true;
-        actors.player.forced={name:'wave',since:980,until:2050,lock:true};
+        actors.player.forced={name:'wave',since:waveAt,until:waveAt+1070,lock:true};
       }
       return;
+    }
+    if(game.beat<0)return;
+    if(game.choice.baseSong==='sky-mobile'&&this.mobile&&game.beat>=256){
+      game.skyMobileAt??=beatTime(game.chart,256);
+      game.skyMobileSound??=0;
+      const elapsed=time-game.skyMobileAt;
+      while(mobileSounds[game.skyMobileSound]?.[0]<=elapsed){
+        const [,name,gain]=mobileSounds[game.skyMobileSound++];
+        this.playSound(name,gain,this.mobile.sounds);
+      }
     }
     if(!game.choice.stage?.startsWith('theShift'))return;
     const {choice,beat}=game;
@@ -66,8 +98,8 @@ export class SkyDetails {
     }
     if(Math.floor(beat)!==state.beat){
       state.beat=Math.floor(beat);
-      if(!this.cardboardFell&&['theShift','theShiftDark'].includes(choice.stage)&&random()<(choice.stage==='theShift'?.0005:.0025)){
-        this.cardboardFell=true;
+      if(!state.cardboardFell&&['theShift','theShiftDark'].includes(choice.stage)&&rollSecret(game.secretChance,choice.stage==='theShift'?.0005:.0025,random)){
+        state.cardboardFell=true;
         game.propAnimations??={};
         game.propAnimations.boyfriendCutout={name:'fall',since:time,until:Infinity};
       }
@@ -80,13 +112,30 @@ export class SkyDetails {
     }
   }
 
-  playSound(name){
-    const buffer=this.sounds?.[name],audio=this.audio;
+  mobileView(game,time,reducedMotion){
+    if(game.skyMobileAt==null||!this.mobile)return null;
+    const elapsed=time-game.skyMobileAt;
+    const loop=elapsed>=12000;
+    return {
+      elapsed,duringPlay:true,
+      camera:reducedMotion?null:[[0,['opponent',0,30,.9],1500,'sineOut']],
+      actors:[{role:'opponent',asset:this.mobile.sky,label:loop?'high loop':'smoke',
+        age:Math.max(0,elapsed-(loop?12000:1000)),offset:[-208,-620],loop}],
+      smoke:elapsed>=3050&&elapsed<7000?{art:this.mobile.smoke,age:elapsed-3050}:null,
+      fade:clamp((elapsed-3050)/8000),
+    };
+  }
+
+  playSound(name,gain=1,sounds=this.sounds){
+    const buffer=sounds?.[name],audio=this.audio;
     if(!buffer||!audio?.ctx)return;
     const source=audio.ctx.createBufferSource();
     source.buffer=buffer;
-    source.connect(audio.fx);
-    source.onended=()=>source.disconnect();
+    const level=audio.ctx.createGain();
+    level.gain.value=gain;
+    source.connect(level);
+    level.connect(audio.fx);
+    source.onended=()=>{source.disconnect();level.disconnect();};
     source.start();
   }
 
@@ -94,11 +143,11 @@ export class SkyDetails {
     if(game.choice.baseSong==='blissful'){
       if(name==='preDance'){
         game.animationSuffix??={};
-        game.animationSuffix[role]={idle:role==='player'?'-caramel':'-alt'};
+        game.animationSuffix[role]={idle:role==='player'?'-caramel':'-alt',dance:true};
         if(role==='player')game.skyDanceLock=true;
-      }else if(name==='hey'&&role==='player'){
-        game.skyDanceLock=false;
-        if(game.animationSuffix)delete game.animationSuffix.player;
+      }else if(name==='hey'&&role==='player'||['idle','cheer'].includes(name)&&role==='opponent'){
+        if(role==='player')game.skyDanceLock=false;
+        if(game.animationSuffix)delete game.animationSuffix[role];
       }
     }
     if(!game.choice.stage?.startsWith('theShift'))return;
@@ -112,6 +161,23 @@ export class SkyDetails {
       game.animationSuffix.opponent={idle:'-tomato',sing:'-tomato'};
       this.playSound('tomatoSplat');
     }
+  }
+
+  drawScenecoreShot(ctx,shot,position,time,scale,config,flashing){
+    if(!this.flashes||!shot||!config)return;
+    const age=time-shot.time;
+    if(age<0)return;
+    const index=Math.floor(age*.024),frame=this.flashes.lanes[shot.lane][index];
+    if(!frame)return;
+    const offsets=[[-90,360],[900,140],[-90,400],[900,270]];
+    const [dx,dy]=offsets[shot.lane], [originX,originY]=config.normalizedNativeOrigin;
+    const [width,height]=config.logicalIdleSize,[globalX,globalY]=config.globalOffsets;
+    const x=position[0]+(-width/2+globalX-originX+dx-(frame.frameX||0))*scale;
+    const y=position[1]+(-height+globalY-originY+dy-(frame.frameY||0))*scale;
+    ctx.save();
+    if(index<2&&flashing)ctx.globalCompositeOperation='lighter';
+    ctx.drawImage(this.flashes.image,frame.x,frame.y,frame.width,frame.height,x,y,frame.width*scale,frame.height*scale);
+    ctx.restore();
   }
 
   drawSpecialPose(ctx,game,actor,role,position,time,scale){
@@ -128,11 +194,9 @@ export class SkyDetails {
 
   drawBackdrop(ctx,game,time){
     if(game.choice.stage!=='theShiftDarkErect'||!this.art?.angerTile)return;
-    const tile=this.art.angerTile,size=tile.width*.8,height=tile.height*.8;
-    const x=Math.max(0,time)*.075%size,y=Math.max(0,time)*.075%height;
+    const offset=Math.max(0,time)*.075;
     ctx.save();ctx.globalAlpha=.25;ctx.globalCompositeOperation='multiply';
-    for(let left=x-size;left<1280;left+=size)
-      for(let top=y-height;top<720;top+=height)ctx.drawImage(tile,left,top,size,height);
+    drawRepeatingEffect(ctx,this.art.angerTile,offset,offset,.8);
     ctx.restore();
   }
 
@@ -159,10 +223,8 @@ export class SkyDetails {
       ctx.restore();
     }
     if(choice.stage==='theShiftScenecore'&&this.art.sceneHearts){
-      const tile=this.art.sceneHearts,x=time*.125%tile.width,y=time*.125%tile.height;
       ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=.3;
-      for(let left=x-tile.width;left<1280;left+=tile.width)
-        for(let top=y-tile.height;top<720;top+=tile.height)ctx.drawImage(tile,left,top);
+      drawRepeatingEffect(ctx,this.art.sceneHearts,time*.125,time*.125);
       ctx.restore();
     }
     if(this.art.angryVignette&&game.skyDetails?.anger){
