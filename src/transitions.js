@@ -39,7 +39,7 @@ export class SceneTransitions {
 
   begin(source,from,to,{reducedMotion=false,now=performance.now(),stickers=null}={}){
     if(reducedMotion||[from,to].some(scene=>['editor','mods','character'].includes(scene))){
-      this.active=false;
+      this.finish();
       return;
     }
     this.ctx.clearRect(0,0,1280,720);
@@ -90,10 +90,16 @@ export class SceneTransitions {
     }
   }
 
+  finish(){
+    if(this.active)this.ctx.clearRect(0,0,1280,720);
+    this.active=false;
+    this.stickers=null;
+  }
+
   draw(ctx,now,sfx=()=>{}){
     if(!this.active)return;
     const age=Math.max(0,now-this.started),p=age/this.duration;
-    if(p>=1){this.active=false;return;}
+    if(p>=1){this.finish();return;}
     if(this.kind==='stickers'){this.drawStickers(ctx,age,sfx);return;}
     const eased=1-Math.pow(1-p,3);
     ctx.save();

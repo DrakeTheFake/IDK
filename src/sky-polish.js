@@ -1,3 +1,4 @@
+import {drawSprite,withSpriteFilter} from './sprite-rendering.js';
 import {rollSecret} from './sky-effects.js';
 import {EXPANDED_BASE} from './expanded-content.js';
 import {expandedImage,expandedJSON,loadExpandedAnimation} from './sky-ui.js';
@@ -38,7 +39,7 @@ export function drawSkyAnimation(ctx,asset,time,x,y,{scale=1,label,loop=false,no
     ctx.globalAlpha*=command.a??1;
     ctx.transform(...command.m);
     if(command.rotated){ctx.translate(0,w);ctx.rotate(-Math.PI/2);}
-    ctx.drawImage(image,sx,sy,w,h,0,0,w,h);
+    drawSprite(ctx,image,sx,sy,w,h,0,0,w,h);
     ctx.restore();
   }
   ctx.restore();
@@ -82,7 +83,7 @@ function atlasFrame(asset,time,fps){
 }
 
 function drawAtlasFrame(ctx,asset,frame,x,y,scaleX,scaleY=scaleX){
-  ctx.drawImage(asset.image,frame.x,frame.y,frame.width,frame.height,
+  drawSprite(ctx,asset.image,frame.x,frame.y,frame.width,frame.height,
     x-(frame.frameX||0)*scaleX,y-(frame.frameY||0)*scaleY,frame.width*scaleX,frame.height*scaleY);
 }
 
@@ -157,62 +158,69 @@ export class SkyPolish {
     const seconds=Math.max(0,time)/1000;
     const motion=reducedMotion?0:seconds;
     const erect=game.choice.stage.endsWith('Erect');
-    ctx.save();
-    if(erect&&mobile)ctx.filter='hue-rotate(-97deg)';
-    if(effect==='black'){
-      ctx.fillStyle='#000';
-      ctx.fillRect(-1280,-720,3840,2160);
-    }else if(effect==='laser'||effect==='foregroundLaser'){
-      const asset=this.manifest.laser,frame=atlasFrame(asset,motion*1000,24);
-      const front=effect==='foregroundLaser',width=frame.frameWidth||frame.width,height=frame.frameHeight||frame.height;
-      const swing=Math.sin(motion*4)*(erect?200:100);
-      const worldX=front?1602-2*swing:1+swing;
-      const angle=(1+(front?-1:1)*Math.sin(motion*2)*10)*(front?2:1);
-      ctx.translate(originX+(worldX+width/2)*worldScale-pan,originY+(-500+height/2)*worldScale);
-      ctx.rotate(angle*TAU/360);
-      if(front)ctx.globalCompositeOperation='lighter';
-      const scaleX=worldScale*(front?0.4:1),scaleY=4*worldScale;
-      drawAtlasFrame(ctx,asset,frame,-width*scaleX/2,-height*scaleY/2,scaleX,scaleY);
-    }else if(effect==='wall'){
-      const asset=this.manifest.wall,frame=atlasFrame(asset,motion*1000,12);
-      const width=frame.width*worldScale,height=frame.height*worldScale;
-      const firstY=modulo(originY-150*worldScale-motion*2000*worldScale,height);
-      ctx.globalAlpha*=0.5;
-      ctx.globalCompositeOperation='lighter';
-      ctx.imageSmoothingEnabled=false;
-      const left=modulo(640-width/2-pan,width)-width;
-      for(let x=left;x<1280;x+=width)for(let y=firstY-height;y<720;y+=height){
-        ctx.drawImage(asset.image,frame.x,frame.y,frame.width,frame.height,x,y,width,height);
-      }
-    }else if(effect==='giygas'){
-      const asset=this.manifest.giygas,frame=atlasFrame(asset,motion*1000,12);
-      const scale=6*worldScale,width=frame.width*scale,height=frame.height*scale;
-      const firstX=modulo(originX-pan+motion*50*worldScale,width);
-      const firstY=modulo(originY-500*worldScale,height);
-      ctx.globalAlpha*=0.3;
-      ctx.globalCompositeOperation='lighter';
-      ctx.imageSmoothingEnabled=false;
-      for(let x=firstX-width*2;x<1280+width;x+=width){
-        for(let y=firstY-height*2;y<720+height;y+=height)ctx.drawImage(asset.image,frame.x,frame.y,frame.width,frame.height,x,y,width,height);
-      }
-    }else{
-      const elapsed=time-game.skyManifestAt,asset=this.manifestPico[effect];
-      if(effect==='manifestCup'&&elapsed>=1850&&elapsed<5400){
-        const frameIndex=Math.min(asset.frames.length-1,Math.floor((elapsed-1850)*24/1000));
-        const flicker=elapsed>=2400&&!reducedMotion&&Math.floor((elapsed-2400)/60)%2===1;
-        if(!flicker)drawAtlasFrame(ctx,asset,asset.frames[frameIndex],originX+1036*worldScale-pan,originY+780*worldScale,worldScale);
-      }else if(effect==='manifestWater'&&elapsed>=700&&elapsed<1500){
-        const frameIndex=Math.min(asset.frames.length-1,Math.floor((elapsed-700)*24/1000));
-        ctx.globalAlpha*=.5;
+    const draw=()=>{
+      if(effect==='black'){
+        ctx.fillStyle='#000';
+        ctx.fillRect(-1280,-720,3840,2160);
+      }else if(effect==='laser'||effect==='foregroundLaser'){
+        const asset=this.manifest.laser,frame=atlasFrame(asset,motion*1000,24);
+        const front=effect==='foregroundLaser',width=frame.frameWidth||frame.width,height=frame.frameHeight||frame.height;
+        const swing=Math.sin(motion*4)*(erect?200:100);
+        const worldX=front?1602-2*swing:1+swing;
+        const angle=(1+(front?-1:1)*Math.sin(motion*2)*10)*(front?2:1);
+        ctx.translate(originX+(worldX+width/2)*worldScale-pan,originY+(-500+height/2)*worldScale);
+        ctx.rotate(angle*TAU/360);
+        if(front)ctx.globalCompositeOperation='lighter';
+        const scaleX=worldScale*(front?0.4:1),scaleY=4*worldScale;
+        drawAtlasFrame(ctx,asset,frame,-width*scaleX/2,-height*scaleY/2,scaleX,scaleY);
+      }else if(effect==='wall'){
+        const asset=this.manifest.wall,frame=atlasFrame(asset,motion*1000,12);
+        const width=frame.width*worldScale,height=frame.height*worldScale;
+        const firstY=modulo(originY-150*worldScale-motion*2000*worldScale,height);
+        ctx.globalAlpha*=0.5;
         ctx.globalCompositeOperation='lighter';
-        drawAtlasFrame(ctx,asset,asset.frames[frameIndex],originX+36*worldScale-pan,originY+400*worldScale,worldScale);
-      }else if(effect==='manifestFried'&&game.skyManifestDead){
-        const frame=atlasFrame(asset,Math.max(0,elapsed-3760),24);
-        ctx.filter='brightness(.88) contrast(1.12) drop-shadow(3px -3px 0px #b21a27)';
-        drawAtlasFrame(ctx,asset,frame,originX+35*worldScale-pan,originY+740*worldScale,worldScale);
+        ctx.imageSmoothingEnabled=false;
+        const left=modulo(640-width/2-pan,width)-width;
+        for(let x=left;x<1280;x+=width)for(let y=firstY-height;y<720;y+=height){
+          drawSprite(ctx,asset.image,frame.x,frame.y,frame.width,frame.height,x,y,width,height);
+        }
+      }else if(effect==='giygas'){
+        const asset=this.manifest.giygas,frame=atlasFrame(asset,motion*1000,12);
+        const scale=6*worldScale,width=frame.width*scale,height=frame.height*scale;
+        const firstX=modulo(originX-pan+motion*50*worldScale,width);
+        const firstY=modulo(originY-500*worldScale,height);
+        ctx.globalAlpha*=0.3;
+        ctx.globalCompositeOperation='lighter';
+        ctx.imageSmoothingEnabled=false;
+        for(let x=firstX-width;x<1280;x+=width){
+          for(let y=firstY-height;y<720;y+=height)drawSprite(ctx,asset.image,frame.x,frame.y,frame.width,frame.height,x,y,width,height);
+        }
+      }else{
+        const elapsed=time-game.skyManifestAt,asset=this.manifestPico[effect];
+        if(effect==='manifestCup'&&elapsed>=1850&&elapsed<5400){
+          const frameIndex=Math.min(asset.frames.length-1,Math.floor((elapsed-1850)*24/1000));
+          const flicker=elapsed>=2400&&!reducedMotion&&Math.floor((elapsed-2400)/60)%2===1;
+          if(!flicker)drawAtlasFrame(ctx,asset,asset.frames[frameIndex],originX+1036*worldScale-pan,originY+780*worldScale,worldScale);
+        }else if(effect==='manifestWater'&&elapsed>=700&&elapsed<1500){
+          const frameIndex=Math.min(asset.frames.length-1,Math.floor((elapsed-700)*24/1000));
+          ctx.globalAlpha*=.5;
+          ctx.globalCompositeOperation='lighter';
+          drawAtlasFrame(ctx,asset,asset.frames[frameIndex],originX+36*worldScale-pan,originY+400*worldScale,worldScale);
+        }else if(effect==='manifestFried'&&game.skyManifestDead){
+          const frame=atlasFrame(asset,Math.max(0,elapsed-3760),24);
+          withSpriteFilter(ctx,'brightness(.88) contrast(1.12)',()=>{
+            drawAtlasFrame(ctx,asset,frame,originX+35*worldScale-pan,originY+740*worldScale,worldScale);
+          },{x:3,y:-3,color:'#b21a27'});
+        }
       }
+    };
+    ctx.save();
+    try {
+      if(erect&&mobile&&effect!=='black')withSpriteFilter(ctx,'hue-rotate(-97deg)',draw);
+      else draw();
+    } finally {
+      ctx.restore();
     }
-    ctx.restore();
   }
 
   drawProp(ctx,game,prop,draw,{time=0,mobile=false,worldScale=0.72,originY=-70,reducedMotion=false}={}){
@@ -221,7 +229,6 @@ export class SkyPolish {
       if(name==='rocket'&&!prop.alpha||name==='crucifixBlock'&&game.choice.variant==='pico')return;
       if(name==='gradientTop'||name==='gradientBottom'){
         ctx.save();
-        if(mobile&&game.choice.stage.endsWith('Erect'))ctx.filter='hue-rotate(-97deg)';
         ctx.globalCompositeOperation='lighter';
         if(name==='gradientBottom'){
           const y=originY+prop.position[1]*worldScale;
@@ -229,7 +236,8 @@ export class SkyPolish {
           ctx.translate(0,2*y+height);
           ctx.scale(1,-1);
         }
-        draw();
+        if(mobile&&game.choice.stage.endsWith('Erect'))withSpriteFilter(ctx,'hue-rotate(-97deg)',draw);
+        else draw();
         ctx.restore();
         return;
       }
@@ -247,13 +255,8 @@ export class SkyPolish {
     if(role==='opponent'&&game.skyManifestDead)return true;
     if(!isManifest(game.choice))return draw();
     const color=mobile&&game.choice.stage.endsWith('Erect')?'#6633f5':'#b21a27';
-    const offsets={player:[-3,-3],opponent:[3,-3],girlfriend:[0,-3]};
-    const [x,y]=offsets[role]||[0,-3];
-    ctx.save();
-    ctx.filter=`brightness(.88) contrast(1.12) saturate(1.12) drop-shadow(${x}px ${y}px 0px ${color})`;
-    const result=draw();
-    ctx.restore();
-    return result;
+    const x=role==='player'?-3:role==='opponent'?3:0;
+    return withSpriteFilter(ctx,'brightness(.88) contrast(1.12) saturate(1.12)',draw,{x,y:-3,color});
   }
 
   updateTutorial(game,time,{audio,finish}){

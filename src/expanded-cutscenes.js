@@ -397,10 +397,16 @@ export class ExpandedCutscenes {
       current.video.pause();
       current.video.removeAttribute('src');
       current.video.load();
+      current.video=null;
     }
+    for(const sound of current.sounds||[]){
+      sound.audio.pause();
+      sound.audio.removeAttribute?.('src');
+      sound.audio.load?.();
+    }
+    current.sounds=[];
     current.jingle?.pause();
     current.voice?.stop();
-    for(const sound of current.sounds||[])sound.audio.pause();
     current.resolve(complete?current:false);
   }
 

@@ -33,7 +33,9 @@ import {drawModCharacter,drawModStageProps} from './mod-visuals.js';
 
 const canvas=document.querySelector('#screen'),ctx=canvas.getContext('2d',{alpha:false});
 const buttonLayer=document.querySelector('#buttons'),announcement=document.querySelector('#announcement');
-const storage={get(k,f){try{return JSON.parse(localStorage.getItem('fnf-week1:'+k))??f;}catch{return f;}},set(k,v){try{localStorage.setItem('fnf-week1:'+k,JSON.stringify(v));}catch{}}};
+let savedMenuVersion=0;
+const storage={get(k,f){try{return JSON.parse(localStorage.getItem('fnf-week1:'+k))??f;}catch{return f;}},set(k,v){savedMenuVersion++;try{localStorage.setItem('fnf-week1:'+k,JSON.stringify(v));}catch{}}};
+window.addEventListener('storage',event=>{if(!event.key||event.key.startsWith('fnf-week1:'))savedMenuVersion++;});
 const savedSettings=storage.get('settings',{});
 const settings=normalizePreferences(savedSettings,normalizeSettings(savedSettings));
 if(!storage.get('settings',null)&&matchMedia('(prefers-reduced-motion: reduce)').matches)settings.reducedMotion=true;
@@ -133,7 +135,7 @@ function songCaptions(choice){
   return null;
 }
 const builtinSongs=[...SONGS];let storyWeek=0,characterOpening=false,characterExitAt=0,modsReturn='menu';
-function refreshMods(){SONGS.splice(0,SONGS.length,...builtinSongs,...modLibrary.songs());for(const song of SONGS)for(const level of song.mod?song.difficulties:[])if(!DIFFICULTIES.some(d=>d.toLowerCase()===level))DIFFICULTIES.push(level[0].toUpperCase()+level.slice(1));songIndex=Math.min(songIndex,SONGS.length-1);chartCache.clear();}
+function refreshMods(){savedMenuVersion++;SONGS.splice(0,SONGS.length,...builtinSongs,...modLibrary.songs());for(const song of SONGS)for(const level of song.mod?song.difficulties:[])if(!DIFFICULTIES.some(d=>d.toLowerCase()===level))DIFFICULTIES.push(level[0].toUpperCase()+level.slice(1));songIndex=Math.min(songIndex,SONGS.length-1);chartCache.clear();}
 const modManager=new ModManager(modLibrary,{onExit:()=>{enter(modsReturn,modsReturn==='menu'?4:songIndex);canvas.focus();},onChange:refreshMods});
 function openMods(){modsReturn=scene==='freeplay'?'freeplay':'menu';stopPreview();audio.stop();audio.stopMenu();enter('mods');modManager.open();}
 function availableDifficulties(index=songIndex,character=fp.character){
@@ -157,8 +159,16 @@ async function beginCharacterSelection(){if(characterOpening||scene!=='freeplay'
 const fp={selectedId:'bopeebo',filter:'all',search:'',sort:'default',favorites:new Set(storage.get('favorites',[])),previewing:false,previewGeneration:0,previewTimer:null,character:playerIdentity(storage.get('character','bf')),instrumental:'default'};
 let variantCatalog=[],baseSongCatalog=[];
 let viewportWidth=1280,viewportAspect=1;
+function updateViewport({width,height}){
+  viewportWidth=Math.max(1,width);
+  viewportAspect=viewportWidth/Math.max(1,height)/(1280/720);
+}
+updateViewport(canvas.getBoundingClientRect());
+new ResizeObserver(([entry])=>updateViewport(entry.contentRect)).observe(canvas);
+const coarsePointer=matchMedia('(pointer: coarse)');
+const mobileDevice=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 function viewAspect(){return viewportAspect;}
-function mobileActive(){return settings.touchLayout==='on'||settings.touchLayout!=='off'&&(matchMedia('(pointer: coarse)').matches||/Android|iPhone|iPad|iPod/i.test(navigator.userAgent));}
+function mobileActive(){return settings.touchLayout==='on'||settings.touchLayout!=='off'&&(coarsePointer.matches||mobileDevice);}
 function laneCount(){return game&&['play','paused','results','gameover'].includes(scene)?game.laneCount:settings.keyMode;}
 function laneDirection(lane){return laneCount()===6?SIX_DIRECTIONS[lane]:lane;}
 function playKeys(){return laneCount()===6?settings.keys6:settings.keys;}
@@ -198,8 +208,18 @@ const NOTE_PREFIX=['purple0','blue0','green0','red0'];
 const BF_OFFSETS={idle:[-5,0],LEFT:[12,-6],DOWN:[-10,-50],UP:[-29,27],RIGHT:[-38,-7]};
 const DAD_OFFSETS={idle:[0,0],LEFT:[-10,10],DOWN:[0,-30],UP:[-6,50],RIGHT:[0,27]};
 let scene='title',sceneAt=performance.now(),selected=0,difficulty=1,songIndex=0,story=false,storyTotal=0,storyStats=[],game=null;
-let pendingAnimationFrame=null,renderWatchdog=null,fallbackUntil=0;
-function scheduleFrame(){if(pendingAnimationFrame===null)pendingAnimationFrame=requestAnimationFrame(t=>{pendingAnimationFrame=null;tick(t);});}
+let pendingAnimationFrame=null,renderWatchdog=null,lastAnimationCallback=0;
+function scheduleFrame(){
+  if(pendingAnimationFrame!==null)return;
+  pendingAnimationFrame=requestAnimationFrame(()=>{
+    pendingAnimationFrame=null;
+    const now=performance.now();
+    const wasStalled=now-lastAnimationCallback>=80;
+    lastAnimationCallback=now;
+    if(wasStalled&&now-lastFrame<8){scheduleFrame();return;}
+    tick(now);
+  });
+}
 let buttons=[],buttonSignature='',frameTime=0,lastFrame=0,flash=0,transition=0,errorText='',loadGeneration=0;
 const buttonNodes=new Map(),buttonData=new Map();
 let held=new Set(),laneFlashes=[0,0,0,0,0,0],opponentFlashes=[0,0,0,0,0,0],pointerLanes=new Map(),lastPointer=null;
@@ -235,6 +255,7 @@ function importLocalSave(){
       if(backup.version!==1||!backup.entries||typeof backup.entries!=='object'||Array.isArray(backup.entries))throw new Error('Invalid FNF save backup.');
       const entries=Object.entries(backup.entries).filter(([key,value])=>SAVE_FIELDS.test(key)&&value!==null);
       for(const key of localSaveKeys())localStorage.removeItem(key);
+      savedMenuVersion++;
       for(const [key,value] of entries)storage.set(key,value);
       const next=storage.get('settings',{});resetPreferences(next&&typeof next==='object'?next:{});
       refreshSavedMenuState();announce('Save data imported.');
@@ -247,7 +268,7 @@ const preferences=new PreferencesMenu({
   onExit:paused=>{saveSettings();settingsReturn='menu';enter(paused?'paused':'menu',paused?2:3);},
   onLagChange:(active,paused)=>{if(active)audio.stopMenu();else if(!paused)audio.playMenu();},
   exportSave:exportLocalSave,importSave:importLocalSave,
-  clearSave:()=>{for(const key of localSaveKeys())localStorage.removeItem(key);resetPreferences();refreshSavedMenuState();announce('Save data cleared.');},
+  clearSave:()=>{for(const key of localSaveKeys())localStorage.removeItem(key);savedMenuVersion++;resetPreferences();refreshSavedMenuState();announce('Save data cleared.');},
   resetSettings:()=>{resetPreferences();announce('Default settings restored.');},
   capabilities:{rewiredHazards:false,screenshots:true},
 });
@@ -368,7 +389,9 @@ function updateRankReveal(){
   return {...rankReveal,age};
 }
 function drawFreeplay(){
-  const songs=freeplaySongs().map(s=>{const choice=songChoice(SONGS.indexOf(s));return {...s,bpm:choice.bpm||s.bpm,opponent:choice.opponent||s.opponent};}),records=Object.fromEntries(SONGS.map((s,i)=>[s.id,bestFor(i)]));loadSkyAlbum(songChoice().album);const targets=modernFreeplay.draw(ctx,{rankReveal:updateRankReveal(),time:characterOpening?frameTime-characterExitAt:frameTime-sceneAt,djAnimation:characterOpening?'characterSelect':'idle',selectedSong:fp.selectedId,difficulty,difficultyLabel:DIFFICULTIES[difficulty],records,favorites:fp.favorites,filter:fp.filter,search:fp.search,sort:fp.sort,songs,previewing:fp.previewing,reducedMotion:settings.reducedMotion,character:fp.character,album:songChoice().album});
+  const {songs,records}=freeplayCatalog();
+  const album=songChoice().album;
+  loadSkyAlbum(album);const targets=modernFreeplay.draw(ctx,{rankReveal:updateRankReveal(),time:characterOpening?frameTime-characterExitAt:frameTime-sceneAt,djAnimation:characterOpening?'characterSelect':'idle',selectedSong:fp.selectedId,difficulty,difficultyLabel:DIFFICULTIES[difficulty],records,favorites:fp.favorites,filter:fp.filter,search:fp.search,sort:fp.sort,songs,previewing:fp.previewing,reducedMotion:settings.reducedMotion,character:fp.character,album});
   for(const target of targets)newButton(target.id,target.label,target.x,target.y,target.w,target.h,()=>freeplayAction(target.action,target.value));
   text(settings.keyMode+'K [6]',530,686,16,'#fff','left',0);newButton('fp-mode','Switch 4K / 6K mode',510,670,145,48,toggleKeyMode);text('TAB: CHARACTER',180,686,16,'#fff','left',0);newButton('fp-mods','Import and manage mods',390,670,120,48,openMods);text('M: MODS',392,686,16,'#fff','left',0);newButton('fp-character',`Choose character, current ${({bf:'Boyfriend',pico:'Pico',sky:'Sky'}[fp.character])}`,155,670,225,48,beginCharacterSelection);newButton('fp-instrumental',`Instrumental: ${fp.instrumental}`,15,165,310,50,()=>enter('instrumental'));
   text(`I: INST ${fp.instrumental.toUpperCase()}`,18,181,17,'#111','left',0);
@@ -377,7 +400,33 @@ function freeplayDifficulties(){
   const levels=new Set(SONGS.flatMap((song,i)=>song.hidden?[]:availableDifficulties(i)));
   return DIFFICULTIES.map((_,i)=>i).filter(i=>levels.has(i));
 }
-function freeplaySongs(){let list=SONGS.filter(s=>{if((s.hidden&&!(s.id==='sky-lyrics'&&storage.get('skyLyricsUnlocked',false)))||!availableDifficulties(SONGS.indexOf(s)).includes(difficulty))return false;if(fp.search&&!s.name.toLowerCase().includes(fp.search.toLowerCase()))return false;if(fp.filter==='favorites')return fp.favorites.has(s.id);if(fp.filter==='numbers')return /^\d/.test(s.name);if(fp.filter==='all')return true;const [a,z]=fp.filter.split('-');const first=s.name[0].toLowerCase();return first>=a&&first<=z;});if(fp.sort==='title')list.sort((a,b)=>a.name.localeCompare(b.name));if(fp.sort==='bpm')list.sort((a,b)=>a.bpm-b.bpm);if(fp.sort==='score')list.sort((a,b)=>(bestFor(SONGS.indexOf(b))?.score||0)-(bestFor(SONGS.indexOf(a))?.score||0));return list;}
+let freeplayCache=null;
+function freeplayCatalog(){
+  const key=JSON.stringify([savedMenuVersion,difficulty,settings.keyMode,fp.character,fp.instrumental,fp.search,fp.filter,fp.sort]);
+  if(freeplayCache?.key===key)return freeplayCache;
+  const records=Object.fromEntries(SONGS.map((song,i)=>[song.id,bestFor(i)]));
+  const lyricsUnlocked=storage.get('skyLyricsUnlocked',false),search=fp.search.toLowerCase();
+  const [firstLetter,lastLetter]=fp.filter.split('-');
+  const list=SONGS.filter((song,index)=>{
+    if(song.hidden&&!(song.id==='sky-lyrics'&&lyricsUnlocked))return false;
+    if(!availableDifficulties(index).includes(difficulty))return false;
+    if(search&&!song.name.toLowerCase().includes(search))return false;
+    if(fp.filter==='favorites')return fp.favorites.has(song.id);
+    if(fp.filter==='numbers')return /^\d/.test(song.name);
+    if(fp.filter==='all')return true;
+    const first=song.name[0].toLowerCase();
+    return first>=firstLetter&&first<=lastLetter;
+  });
+  if(fp.sort==='title')list.sort((a,b)=>a.name.localeCompare(b.name));
+  if(fp.sort==='bpm')list.sort((a,b)=>a.bpm-b.bpm);
+  if(fp.sort==='score')list.sort((a,b)=>(records[b.id]?.score||0)-(records[a.id]?.score||0));
+  const songs=list.map(song=>{
+    const choice=songChoice(SONGS.indexOf(song));
+    return {...song,bpm:choice.bpm||song.bpm,opponent:choice.opponent||song.opponent};
+  });
+  return freeplayCache={key,list,songs,records};
+}
+function freeplaySongs(){return freeplayCatalog().list;}
 function freeplayRows(){return [{id:'random'},...freeplaySongs()];}
 function selectFreeplay(id){finishRankReveal(false);fp.selectedId=id;const index=SONGS.findIndex(s=>s.id===id);if(index>=0){songIndex=index;normalizeDifficulty();}audio.sfx('scrollMenu',0.5);schedulePreview();announce(id==='random'?'Random song':SONGS[index]?.name||'No song');}
 function stopPreview(){clearTimeout(fp.previewTimer);fp.previewGeneration++;audio.stopPreview();fp.previewing=false;}
@@ -1045,7 +1094,7 @@ canvas.addEventListener('pointerup',event=>{if(scene==='gallery'&&gallerySwipe!=
 canvas.addEventListener('pointermove',event=>preferences.trackPointer(canvas,event.clientX,event.clientY));
 canvas.addEventListener('pointercancel',()=>gallerySwipe=null);
 document.querySelector('#game').addEventListener('wheel',e=>{if(scene==='settings'||scene==='freeplay'){e.preventDefault();if(Math.abs(e.deltaY)>5){const delta=Math.sign(e.deltaY);if(scene==='settings')preferences.wheel(delta);else navigate(delta);}}},{passive:false});
-function tick(timestamp){const bounds=canvas.getBoundingClientRect();viewportWidth=Math.max(1,bounds.width);viewportAspect=viewportWidth/Math.max(1,bounds.height)/(1280/720);touchControls.update(scene==='play'&&mobileActive(),laneCount());frameTime=timestamp;const dt=clamp((timestamp-(lastFrame||timestamp))/1000,0,0.1);buttons=[];
+function tick(timestamp){touchControls.update(scene==='play'&&mobileActive(),laneCount());frameTime=timestamp;const dt=clamp((timestamp-(lastFrame||timestamp))/1000,0,0.1);buttons=[];
   if(scene==='editor'||scene==='mods'){syncButtons();canvas.dataset.scene=scene;lastFrame=timestamp;scheduleFrame();return;}
   if(scene==='play'&&game&&lastFrame&&game.time>1000){game.frameTimes.push(timestamp-lastFrame);if(game.frameTimes.length>180)game.frameTimes.shift();}
   if(game&&Math.floor(timestamp/1000)!==Math.floor(lastFrame/1000)){const times=[...game.frameTimes].sort((a,b)=>a-b);canvas.dataset.frameP95=String(Math.round(times[Math.floor(times.length*0.95)]||0));canvas.dataset.frameMax=String(Math.round(times.at(-1)||0));canvas.dataset.character=game.character;canvas.dataset.level=game.choice.level;canvas.dataset.bpm=String(bpmAt(game.chart,game.time));canvas.dataset.lanes=String(game.laneCount);canvas.dataset.mobile=String(mobileActive());}
@@ -1055,5 +1104,8 @@ function tick(timestamp){const bounds=canvas.getBoundingClientRect();viewportWid
   drawDebugDisplay(ctx,settings,{fps:Math.round(1000/Math.max(1,interval)),frameMs:interval,scene,songTime:game?.time});
   sceneTransitions.draw(ctx,timestamp,(name,gain)=>audio.sfx(name,gain));if(sceneTransitions.blocking)buttons=[];if(transition>0){transition=Math.max(0,transition-dt);rect(0,0,1280,720,`rgba(0,0,0,${transition/0.22})`);}syncButtons();if(Math.floor(timestamp/250)!==Math.floor(lastFrame/250)){canvas.dataset.scene=scene;canvas.dataset.song=SONGS[songIndex].id;canvas.dataset.time=String(Math.round(game?.time||0));canvas.dataset.score=String(game?.stats.score||0);canvas.dataset.misses=String(game?.stats.misses||0);canvas.dataset.duration=String(Math.round(game?.duration||0));canvas.dataset.audioState=audio.ctx?.state||'idle';canvas.dataset.preview=fp.previewing?'playing':'idle';canvas.dataset.resultRank=scene==='results'?(nativeResults.rank||''):'';canvas.dataset.mode=game?.botplay?'autoplay':game?.practice?'practice':'standard';}lastFrame=timestamp;scheduleFrame();
 }
-async function boot(){const status=document.querySelector('#boot-status'),progress=document.querySelector('#boot-progress'),retry=document.querySelector('#boot-retry');try{retry.hidden=true;await Promise.all([nativeContent.load(),nativeExtras.load('picoCard'),assets.load(n=>{progress.value=Math.round(n*65);}),modernFreeplay.load(n=>{if(n===1)progress.value=100;}),fetch('variant-catalog.json').then(r=>r.json()).then(c=>{variantCatalog=c.variants;baseSongCatalog=c.baseSongs||[];if(!DIFFICULTIES.includes('Erect'))DIFFICULTIES.push('Erect','Nightmare');})]);await Promise.all([expandedContent.load(),expandedCutscenes.load(),loadExpandedMenu(),expandedJSON('song-credits.json').then(data=>nativeCredits=data).catch(()=>{})]);for(const song of expandedContent.entries(builtinSongs))if(!builtinSongs.some(old=>old.id===song.id))builtinSongs.push(song);await modLibrary.init();refreshMods();for(const [atlas,frames] of Object.entries(assets.atlases)){for(const prefix of new Set(frames.filter(f=>f.name).map(f=>f.name.replace(/\d+$/,''))))assets.frames(atlas,prefix);}document.querySelector('#boot').hidden=true;canvas.focus();audio.playMenu();scheduleFrame();if(!renderWatchdog)renderWatchdog=setInterval(()=>{const now=performance.now();if(!document.hidden){const gap=now-lastFrame;if(gap>40)fallbackUntil=now+1500;if(gap>14&&now<fallbackUntil)tick(now);}},16);announce('Friday Night Funkin. Press Enter to begin.');}catch(e){console.error(e);status.textContent='Could not load the game. Serve this folder over HTTP and try again.';retry.hidden=false;retry.onclick=boot;}}
+async function boot(){const status=document.querySelector('#boot-status'),progress=document.querySelector('#boot-progress'),retry=document.querySelector('#boot-retry');try{retry.hidden=true;await Promise.all([nativeContent.load(),nativeExtras.load('picoCard'),assets.load(n=>{progress.value=Math.round(n*65);}),modernFreeplay.load(n=>{if(n===1)progress.value=100;}),fetch('variant-catalog.json').then(r=>r.json()).then(c=>{variantCatalog=c.variants;baseSongCatalog=c.baseSongs||[];if(!DIFFICULTIES.includes('Erect'))DIFFICULTIES.push('Erect','Nightmare');})]);await Promise.all([expandedContent.load(),expandedCutscenes.load(),loadExpandedMenu(),expandedJSON('song-credits.json').then(data=>nativeCredits=data).catch(()=>{})]);for(const song of expandedContent.entries(builtinSongs))if(!builtinSongs.some(old=>old.id===song.id))builtinSongs.push(song);await modLibrary.init();refreshMods();for(const [atlas,frames] of Object.entries(assets.atlases)){for(const prefix of new Set(frames.filter(f=>f.name).map(f=>f.name.replace(/\d+$/,''))))assets.frames(atlas,prefix);}document.querySelector('#boot').hidden=true;canvas.focus();audio.playMenu();scheduleFrame();if(!renderWatchdog)renderWatchdog=setInterval(()=>{
+  const now=performance.now();
+  if(!document.hidden&&now-lastAnimationCallback>=80&&now-lastFrame>=14)tick(now);
+},16);announce('Friday Night Funkin. Press Enter to begin.');}catch(e){console.error(e);status.textContent='Could not load the game. Serve this folder over HTTP and try again.';retry.hidden=false;retry.onclick=boot;}}
 boot();

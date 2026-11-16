@@ -1,5 +1,7 @@
 // Full native character symbol trees, Pico gun backing card, and Erect stage.
 // These helpers draw only; parent retains all input, score and scene state.
+import {drawSprite} from './sprite-rendering.js';
+
 const NE_CLAMP=(v,a,b)=>Math.min(b,Math.max(a,v));
 export class NativeExtras {
   constructor(base='native-extras-'){this.base=base;this.packs={};this.images={};this.groups=new Map();this.gunType='base';this.gunChangedAt=0;this.lastCardTime=-1;}
@@ -10,7 +12,7 @@ export class NativeExtras {
   frames(kind,name,prefix=''){const key=kind+'|'+name+'|'+prefix;if(!this.groups.has(key))this.groups.set(key,(this.packs[kind]?.atlases?.[name]||[]).filter(f=>f.name.startsWith(prefix)).sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true})));return this.groups.get(key);}
   sprite(ctx,kind,name,frame,x,y,sx=1,sy=sx){if(!frame)return;const image=this.images[kind]?.[name];if(!image)return;ctx.drawImage(image,frame.sourceX??frame.x,frame.sourceY??frame.y,frame.sourceWidth??frame.width,frame.sourceHeight??frame.height,x-(frame.frameX||0)*sx,y-(frame.frameY||0)*sy,frame.width*sx,frame.height*sy);}
   image(ctx,kind,name,x,y,sx=1,sy=sx){const image=this.images[kind]?.[name];if(image)ctx.drawImage(image,x,y,image.width*sx,image.height*sy);}
-  commands(ctx,image,commands){for(const command of commands||[]){const[x,y,w,h]=command.r,[dw,dh]=command.d||[w,h];ctx.save();ctx.globalAlpha*=command.a??1;ctx.transform(...command.m);if(command.rotated){ctx.translate(0,dw);ctx.rotate(-Math.PI/2);}ctx.drawImage(image,x,y,w,h,0,0,dw,dh);ctx.restore();}}
+  commands(ctx,image,commands){for(const command of commands||[]){const[x,y,w,h]=command.r,[dw,dh]=command.d||[w,h];ctx.save();ctx.globalAlpha*=command.a??1;ctx.transform(...command.m);if(command.rotated){ctx.translate(0,dw);ctx.rotate(-Math.PI/2);}drawSprite(ctx,image,x,y,w,h,0,0,dw,dh);ctx.restore();}}
   hasCharacterAnimation(character,animation){return !!this.packs.characters?.characters[character]?.animations[animation];}
   drawCharacter(ctx,character,animation,{x,y,scale=1,time=0,beat=0,bpm=120,player=false,globalOffsets=true,loop=null,period=1}={}){
     const pack=this.packs.characters,meta=pack?.characters[character];if(!meta)return false;

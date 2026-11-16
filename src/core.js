@@ -50,7 +50,22 @@ export function beatAt(chart,time){let tempo=chart.tempos[0];for(const t of char
 export function bpmAt(chart,time){let bpm=chart.bpm;for(const t of chart.tempos){if(t.time>time)break;bpm=t.bpm;}return bpm;}
 export function dancePeriod(bpm){return bpm>=150?2:1;}
 export function judgement(delta){const a=Math.abs(delta);if(a>HIT_WINDOW)return null;if(a<=45)return {name:'sick',score:350,weight:1};if(a<=90)return {name:'good',score:200,weight:0.75};if(a<=135)return {name:'bad',score:100,weight:0.5};return {name:'shit',score:50,weight:0.25};}
-export function nearestNote(notes,lane,time){let found=null;for(const n of notes){if(n.time>time+HIT_WINDOW)break;if(!n.player||n.hit||n.missed||n.lane!==lane||Math.abs(n.time-time)>HIT_WINDOW)continue;if(!found||Math.abs(n.time-time)<Math.abs(found.time-time))found=n;}return found;}
+export function nearestNote(notes,lane,time){
+  let left=0,right=notes.length;
+  while(left<right){
+    const mid=(left+right)>>>1;
+    if(notes[mid].time<time-HIT_WINDOW)left=mid+1;
+    else right=mid;
+  }
+  let best=null,distance=Infinity;
+  for(let i=left;i<notes.length&&notes[i].time<=time+HIT_WINDOW;i++){
+    const note=notes[i];
+    if(!note.player||note.hit||note.missed||note.lane!==lane)continue;
+    const delta=Math.abs(note.time-time);
+    if(delta<distance){best=note;distance=delta;}
+  }
+  return best;
+}
 export function makeStats(){return {score:0,combo:0,maxCombo:0,misses:0,hits:0,weight:0,health:1,judgements:{sick:0,good:0,bad:0,shit:0},offsets:[],holdTicks:0};}
 export function applyHit(stats,delta){const j=judgement(delta);if(!j)return null;stats.hits++;stats.combo++;stats.maxCombo=Math.max(stats.maxCombo,stats.combo);stats.score+=j.score;stats.weight+=j.weight;stats.health=clamp(stats.health+0.023,0,2);stats.judgements[j.name]++;stats.offsets.push(delta);return j;}
 export function applyMiss(stats){stats.misses++;stats.combo=0;stats.score-=10;stats.health=clamp(stats.health-0.12,0,2);}
