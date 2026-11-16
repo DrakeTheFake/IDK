@@ -2,7 +2,7 @@ import {SONGS,WEEKS,bpmAt,dancePeriod,DIFFICULTIES,DEFAULT_SETTINGS,HIT_WINDOW,c
 import {builtinTrackOffsets} from './builtin-audio.js';
 import {songIntro,songOutro,pixelStage,rosesFade} from './story-flow.js';
 import {ExpandedContent,EXPANDED_BASE,EXPANDED_WEEKS,playerIdentity} from './expanded-content.js';
-import {ExpandedCutscenes,expandedIntro,expandedOutro,expandedStageIntro,expandedCaptions,scriptedCamera,rollSkyPicoShot} from './expanded-cutscenes.js';
+import {ExpandedCutscenes,expandedIntro,expandedOutro,expandedStageIntro,expandedCaptions,scriptedCamera,rollSkyPicoShot,blissfulGreeting} from './expanded-cutscenes.js';
 import {SkyGallery,expandedImage,expandedJSON,loadExpandedAnimation} from './sky-ui.js';
 import {expandedNote,drawExpandedRain} from './expanded-gameplay.js';
 import {PATCH_NOTES} from './patch-notes.js';
@@ -98,10 +98,10 @@ function drawSkyGallery(){
   text('<',54,334,50);text('>',1210,334,50);newButton('gallery-prev','Previous gallery artwork',0,230,110,230,()=>skyGallery.select(-1));newButton('gallery-next','Next gallery artwork',1170,230,110,230,()=>skyGallery.select(1));footer('LEFT / RIGHT: BROWSE    ESC: BACK');
 }
 function launchSkySecret(){storage.set('skyLyricsUnlocked',true);const index=SONGS.findIndex(song=>song.id==='sky-lyrics');if(index<0)return;audio.sfx('confirmMenu');difficulty=2;startSong(index,false,false,null,{character:'bf'});}
-async function runExpandedSequence(id){
+async function runExpandedSequence(id,script=null){
   const generation=loadGeneration,current=game;
   if(settings.naughtyness===false&&['stressCutscene','stressPicoCutscene'].includes(id))id+='-censored';
-  const result=expandedCutscenes.begin(id,{volume:settings.volume,misses:game.stats.misses,extraArt:skyMenu.cutsceneExtras,naughtyness:settings.naughtyness!==false,subtitles:settings.subtitles!==false,alternate:id==='sky-pico-stage'&&rollSkyPicoShot(Math.random,game.secretChance),sfx:(name,gain)=>audio.sfx(name,gain)});
+  const result=expandedCutscenes.begin(id,{volume:settings.volume,misses:game.stats.misses,script,extraArt:skyMenu.cutsceneExtras,naughtyness:settings.naughtyness!==false,subtitles:settings.subtitles!==false,alternate:id==='sky-pico-stage'&&rollSkyPicoShot(Math.random,game.secretChance),sfx:(name,gain)=>audio.sfx(name,gain)});
   if(!result)return true;
   enter('cutscene');announce('Cutscene. Press Enter or Escape to skip.');
   const completed=await result;
@@ -116,7 +116,7 @@ async function runExpandedSequence(id){
 function drawExpandedSequence(){
   const offset=game.completed?game.time:0;
   const subtitles=expandedCutscenes.draw(ctx,frameTime,{stage:(elapsed,view)=>{game.beat=beatAt(game.chart,elapsed);return drawStage(offset+elapsed,{...view,elapsed,cutsceneId:expandedCutscenes.current?.id});},
-    pose:(at,role,name,duration=950)=>{const actor=role==='player'?actorBF:role==='opponent'?actorDad:actorGF;actor.forced={name,since:offset+at,until:offset+at+duration,lock:true};}});
+    pose:(at,role,name,duration=950,speed=1)=>{const actor=role==='player'?actorBF:role==='opponent'?actorDad:actorGF;actor.forced={name,since:offset+at,until:offset+at+duration,speed,lock:true};}});
   canvas.dataset.dialogue=subtitles;
   newButton('cutscene-next','Continue or skip cutscene',0,0,1280,720,()=>expandedCutscenes.advance(false));
 }
@@ -431,15 +431,24 @@ async function startSong(index,isStory=false,continueStory=false,override=null,e
     if(game.modifiers.mirror)for(const note of notes)note.lane=game.laneCount-1-note.lane;
     const captionFile=songCaptions(choice);
     if(captionFile){const current=game;expandedCaptions(captionFile).then(cues=>{if(game===current)game.captions=cues;}).catch(()=>{});}
-    if(choice.baseSong==='blissful')await audio.load('qt-hi-cutie-'+settings.qtLanguage+'.ogg').catch(()=>null);
-    if(generation!==loadGeneration)return;
     if(choice.charts?.picospeaker){
       const shots=await expandedJSON(choice.charts.picospeaker);
       if(generation!==loadGeneration)return;
       game.speakerNotes=shots.song.modernNotes.slice().sort((a,b)=>a.t-b.t);
       game.tankmanRunners=game.speakerNotes.filter((_,i)=>i%8===0);
     }
-    actorBF={direction:'idle',since:0,until:0};actorDad={direction:'idle',since:0,until:0};actorGF={direction:'idle',since:0,until:0};held.clear();laneFlashes.fill(0);opponentFlashes.fill(0);lastCountdown=-99;const storyCutscenes=isStory||settings.freeplayStoryCutscenes;const context={story:storyCutscenes,retry:entry.retry,editor:!!override,character:choice.character,variant:choice.variant};const extra=expandedIntro(choice,{...context,naughtyness:settings.naughtyness!==false});if(extra&&!extra.endsWith('-sky')){if(!await runExpandedSequence(extra)||generation!==loadGeneration)return;}const stageIntro=!entry.retry&&!override&&expandedStageIntro(choice,storyCutscenes);if(stageIntro&&(!await runExpandedSequence(stageIntro)||generation!==loadGeneration))return;for(const actor of [actorBF,actorDad,actorGF])actor.forced=null;game.beat=-6;const intro=extra?.endsWith('-sky')?extra:songIntro(SONGS[index].id,context);if(intro){const complete=await runStorySequence(intro,storyCutscenes);if(!complete||generation!==loadGeneration)return;if(intro==='winter-horrorland')game.hudFadeAt=performance.now();}enter('play');audio.start(game.startTime);announce(`${SONGS[index].name}. ${DIFFICULTIES[difficulty]}. Get ready.`);
+    actorBF={direction:'idle',since:0,until:0};actorDad={direction:'idle',since:0,until:0};actorGF={direction:'idle',since:0,until:0};held.clear();laneFlashes.fill(0);opponentFlashes.fill(0);lastCountdown=-99;const storyCutscenes=isStory||settings.freeplayStoryCutscenes;const context={story:storyCutscenes,retry:entry.retry,editor:!!override,character:choice.character,variant:choice.variant};const extra=expandedIntro(choice,{...context,naughtyness:settings.naughtyness!==false});if(extra&&!extra.endsWith('-sky')){if(!await runExpandedSequence(extra)||generation!==loadGeneration)return;}const stageIntro=!entry.retry&&!override&&expandedStageIntro(choice,storyCutscenes);if(stageIntro&&(!await runExpandedSequence(stageIntro)||generation!==loadGeneration))return;
+    if(choice.baseSong==='blissful'&&!override){
+      const voice=await audio.load('qt-hi-cutie-'+settings.qtLanguage+'.ogg').catch(()=>null);
+      if(generation!==loadGeneration)return;
+      const greeting=nativeContent.character(stageCharacterId('opponent'))?.animationMap.intro;
+      const wave=nativeContent.character(stageCharacterId('player'),true)?.animationMap.wave;
+      if(greeting&&wave){
+        const sequence=blissfulGreeting(greeting,wave,voice?voice.duration*1000:1600,()=>audio.playEffect(voice,.9));
+        if(!await runExpandedSequence('blissful-greeting',sequence))return;
+      }
+    }
+    for(const actor of [actorBF,actorDad,actorGF])actor.forced=null;game.beat=-6;const intro=extra?.endsWith('-sky')?extra:songIntro(SONGS[index].id,context);if(intro){const complete=await runStorySequence(intro,storyCutscenes);if(!complete||generation!==loadGeneration)return;if(intro==='winter-horrorland')game.hudFadeAt=performance.now();}enter('play');audio.start(game.startTime);announce(`${SONGS[index].name}. ${DIFFICULTIES[difficulty]}. Get ready.`);
   }catch(e){if(generation!==loadGeneration)return;errorText=e.message;announce('Loading failed. '+e.message);console.error(e);}
 }
 async function openChartEditor(){
@@ -506,12 +515,12 @@ updateChartEvents(game,time,{bpm:bpmAt(game.chart,time),animate:(target,name,sin
 function updateGame(dt){
   if(!game)return;const time=game.time=audio.time()+settings.offset;const beat=beatAt(game.chart,time);game.beat=beat;if(skyPolish.updateTutorial(game,time,{audio,finish:finishSong}))return;updateSongEvents(time);skyPolish.updateManifest(game,time,{audio,actors:{player:actorBF,opponent:actorDad,girlfriend:actorGF}});
   skyDetails.update(game,time,{player:actorBF,opponent:actorDad,girlfriend:actorGF});
-  const count=Math.floor(time/(60000/game.chart.bpm));if(time<0&&count!==lastCountdown){lastCountdown=count;const sound={[-4]:'intro3',[-3]:'intro2',[-2]:'intro1',[-1]:'introGo'}[count];if(game.choice.baseSong==='blissful'&&count===-4){
-      const greetingAt=-4*60000/game.chart.bpm;
-      actorDad.forced={name:'intro',since:greetingAt,until:greetingAt+3125,lock:true};
-      audio.sfx('qt-hi-cutie-'+settings.qtLanguage,.9);
-    }
-    else if(sound)audio.sfx(pixelStage(game.choice)?pixelUI.countdownSound(count)||sound:sound,0.7);}
+  const countdownTime=audio.time(),count=Math.floor(countdownTime/(60000/game.chart.bpm));
+  if(countdownTime<0&&count!==lastCountdown){
+    lastCountdown=count;
+    const sound={[-4]:'intro3',[-3]:'intro2',[-2]:'intro1',[-1]:'introGo'}[count];
+    if(sound)audio.sfx(pixelStage(game.choice)?pixelUI.countdownSound(count)||sound:sound,.7);
+  }
   while(game.speakerNotes?.[game.speakerIndex]?.t<=time){
     const shot=game.speakerNotes[game.speakerIndex++],lane=shot.d%4;
     const shotDuration=stageCharacterId('girlfriend')==='scenecoresky-shootin'?625:260;
@@ -907,7 +916,7 @@ function drawGameplay(){
  const healthY=down?32:650;rect(338,healthY,604,22,'#000');rect(343,healthY+5,594,12,'#ff0000');const hp=game.stats.health/2;rect(343+594*(1-hp),healthY+5,594*hp,12,'#66ff33');const boundary=343+594*(1-hp),pulse=settings.reducedMotion?1:1+Math.max(0,1-(game.beat%1)*4)*0.1;icon(game.eventHealthIcon?.opponent||game.choice.opponent||'dad',boundary-90*pulse,healthY-28,0.5*pulse,game.stats.health>1.6,false,game.healthIconOptions?.opponent);icon(game.eventHealthIcon?.player||game.choice.characters?.player||(game.character==='pico'?'pico':'bf'),boundary-10,healthY-28,0.5*pulse,game.stats.health<0.4,true,game.healthIconOptions?.player);
  text(mobile?'Score '+game.stats.score+' · Miss '+game.stats.misses+' · '+accuracy(game.stats).toFixed(1)+'%':'Score: '+game.stats.score+'  |  Misses: '+game.stats.misses+'  |  Accuracy: '+accuracy(game.stats).toFixed(2)+'%',640,down?83:690,mobile?Math.max(19,11*1280/viewportWidth):19,'#fff','center',2);
  const remaining=Math.max(0,Math.ceil((game.duration-audio.time())/(1000*game.modifiers.rate)));text(Math.floor(remaining/60)+':'+String(remaining%60).padStart(2,'0'),640,down?5:12,18,'#fff','center',2);text(SONGS[songIndex].name+' - '+DIFFICULTIES[difficulty]+' / '+count+'K',15,mobile?695:down?690:14,mobile?14:16,'#ddd','left',2);
- if(game.practice||game.botplay)text(game.botplay?'BOTPLAY':'PRACTICE MODE',640,down?115:172,25,'#fff','center');const beatms=60000/game.chart.bpm;if(time<0){const name={[-3]:'ready',[-2]:'set',[-1]:'go'}[Math.floor(time/beatms)];if(name&&!(pixelStage(game.choice)&&pixelUI.countdown(ctx,Math.floor(time/beatms)))){const img=assets.images[name];image(name,640-img.width*0.65/2,360-img.height*0.65/2,img.width*0.65,img.height*0.65);}}
+ if(game.practice||game.botplay)text(game.botplay?'BOTPLAY':'PRACTICE MODE',640,down?115:172,25,'#fff','center');const countdownBeat=Math.floor(audio.time()/(60000/game.chart.bpm));if(countdownBeat<0){const name={[-3]:'ready',[-2]:'set',[-1]:'go'}[countdownBeat];if(name&&!(pixelStage(game.choice)&&pixelUI.countdown(ctx,countdownBeat))){const img=assets.images[name];image(name,640-img.width*0.65/2,360-img.height*0.65/2,img.width*0.65,img.height*0.65);}}
  if(!mobile)for(let lane=0;lane<count;lane++)newButton('lane-'+lane,laneLabel(lane)+' note ('+keyLabel(playKeys()[lane])+')',laneX(lane,true),180,count===6?88:112,440,()=>{}, {lane});
  newButton('pause','Pause game',1180,0,100,88,pauseGame);text('II',1248,18,27,'#fff','center',2);ctx.restore();drawSongCredits(time);
 }

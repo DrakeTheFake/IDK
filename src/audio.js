@@ -13,7 +13,18 @@ export class AudioEngine {
     this.stopMenu();this.menuFile=file;this.menu=new Audio(`${file}.ogg`);this.menu.loop=loop;this.menu.volume=this.settings.volume*0.8;this.menu.play().catch(()=>{});
   }
   stopMenu(){if(this.menu){this.menu.pause();this.menu.currentTime=0;}this.menu=null;this.menuFile='';}
-  async sfx(name,volume=1){try{await this.unlock();const buffer=await this.load(`${name}.ogg`);const s=this.ctx.createBufferSource(),g=this.ctx.createGain();s.buffer=buffer;g.gain.value=volume;s.connect(g);g.connect(this.fx);s.onended=()=>{s.disconnect();g.disconnect();};s.start();}catch(e){console.warn('Sound effect could not play',name,e.message);}}
+  playEffect(buffer,volume=1){
+    if(!buffer)return null;
+    const source=this.ctx.createBufferSource(),gain=this.ctx.createGain();
+    source.buffer=buffer;
+    gain.gain.value=volume;
+    source.connect(gain);
+    gain.connect(this.fx);
+    source.onended=()=>{source.disconnect();gain.disconnect();};
+    source.start();
+    return source;
+  }
+  async sfx(name,volume=1){try{await this.unlock();const buffer=await this.load(`${name}.ogg`);this.playEffect(buffer,volume);}catch(e){console.warn('Sound effect could not play',name,e.message);}}
   async prepare(file){await this.unlock();this.buffers=await Promise.all(['Inst','Voices'].map(n=>this.load(`${file}_${n}.ogg`)));return this.buffers[0].duration*1000;}
   async warmEffects(){await Promise.all(['intro1','intro2','intro3','introGo','missnote1','missnote2','missnote3','scrollMenu','confirmMenu','cancelMenu','fnf_loss_sfx','thunder_1','thunder_2',...STICKER_SOUNDS].map(n=>this.load(`${n}.ogg`).catch(()=>null)));}
   startPreview(buffers,offsets,startMs,endMs){

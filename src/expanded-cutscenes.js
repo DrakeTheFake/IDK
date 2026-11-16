@@ -21,6 +21,22 @@ const sceneCaption=(song,naughtyness)=>'subtitles-data-subtitles-skyplayable-'+s
 const clamp01=value=>Math.max(0,Math.min(1,value));
 export const rollSkyPicoShot=(random=Math.random,mode)=>rollSecret(mode,1/10000,random);
 
+function animationLength(animation){
+  return (animation.frameIndices?.length||animation.frameCount)*1000/(animation.fps||24);
+}
+
+export function blissfulGreeting(greeting,wave,voiceDuration,playVoice){
+  const greetingLength=animationLength(greeting),waveLength=animationLength(wave);
+  const voiceAt=180,waveAt=voiceAt+980;
+  return {
+    duration:Math.max(voiceAt+voiceDuration,waveAt+waveLength)+240,
+    voiceAt,
+    poses:[[voiceAt,'opponent','intro',voiceDuration,greetingLength/voiceDuration],
+      [waveAt,'player','wave',waveLength]],
+    playVoice,
+  };
+}
+
 function skyStageScene(id,{naughtyness,subtitles,alternate}) {
   if(id==='ugh-sky-stage'||id==='guns-sky-stage'){
     const guns=id==='guns-sky-stage',song=guns?'guns':'ugh';
@@ -207,10 +223,10 @@ export class ExpandedCutscenes {
     if (response.ok) this.media = await response.json();
   }
 
-  begin(id,{volume=0.7,misses=0,extraArt={},naughtyness=false,subtitles=true,alternate=id==='sky-pico-stage'&&rollSkyPicoShot(),sfx=()=>{}}={}) {
+  begin(id,{volume=0.7,misses=0,extraArt={},naughtyness=false,subtitles=true,alternate=id==='sky-pico-stage'&&rollSkyPicoShot(),sfx=()=>{},script=null}={}) {
     const entry = id==='2hot-alley-outro'&&this.media['2hotCutscene']
       ?{...this.media['2hotCutscene'],stageBeforeVideo:6000}
-      :this.media[id]||skyStageScene(id,{naughtyness,subtitles,alternate});
+      :script||this.media[id]||skyStageScene(id,{naughtyness,subtitles,alternate});
     if (!entry) return null;
     this.stop(false);
     const current = {id,entry,phase:'loading',volume,cues:[],at:performance.now(),skipAt:null,naughtyness,subtitles,alternate,sfx};
@@ -295,6 +311,10 @@ export class ExpandedCutscenes {
   }
 
   drawScript(ctx,current,elapsed,stage,pose){
+    if(current.entry.playVoice&&!current.voiceStarted&&elapsed>=current.entry.voiceAt){
+      current.voiceStarted=true;
+      current.voice=current.entry.playVoice();
+    }
     for(const sound of current.sounds){
       if(!sound.started&&elapsed>=sound.at){
         sound.started=true;
@@ -379,6 +399,7 @@ export class ExpandedCutscenes {
       current.video.load();
     }
     current.jingle?.pause();
+    current.voice?.stop();
     for(const sound of current.sounds||[])sound.audio.pause();
     current.resolve(complete?current:false);
   }

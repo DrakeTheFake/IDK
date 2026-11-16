@@ -58,14 +58,6 @@ export class SkyDetails {
 
   update(game,time,actors,random=Math.random){
     if(game.custom)return;
-    if(game.choice.baseSong==='blissful'){
-      const waveAt=game.startTime+980;
-      if(time>=waveAt&&!game.skyWaved){
-        game.skyWaved=true;
-        actors.player.forced={name:'wave',since:waveAt,until:waveAt+1070,lock:true};
-      }
-      return;
-    }
     if(game.beat<0)return;
     if(game.choice.baseSong==='sky-mobile'&&this.mobile&&game.beat>=256){
       game.skyMobileAt??=beatTime(game.chart,256);
