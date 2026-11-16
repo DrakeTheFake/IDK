@@ -4,6 +4,11 @@ import {EXPANDED_BASE} from './expanded-content.js';
 export const isVamp = choice => choice?.source === 'vs-vamp';
 export const vampPose = (art,id,name) => art?.cutscenes[(id+'_'+name).replaceAll('-','_')];
 
+// GO is the final beat of the countdown, immediately before the song starts.
+export function vivaciousIntroTime(songTime,bpm){
+  return (songTime+60000/bpm)/1000;
+}
+
 export function createVampGameplay(choice, chart, intro=false){
   if(!isVamp(choice))return null;
   const notes=chart.events.filter(e=>e.e==='SpaceBarNote').map(e=>({time:e.t}));
@@ -29,7 +34,7 @@ export function vampHit(state, time, stats){
   if(!best)return null;
   best.done=true;
   const judgement=applyHit(stats,time-best.time);
-  state.confirm=time;
+  state.receptor={animation:'confirm',at:time};
   if(judgement?.name==='sick')state.splash=time;
   return {judgement,delta:time-best.time};
 }
