@@ -1,5 +1,6 @@
 import {expandedImage,loadExpandedAnimation} from './sky-ui.js';
 import {drawSkyAnimation,loadSkyPolishPack} from './sky-polish.js';
+import {EXPANDED_BASE} from './expanded-content.js';
 
 const candyNames=['taco','packofSkittles','popTart','lollipop','jollyRancher'];
 const clamp=value=>Math.max(0,Math.min(1,value));
@@ -11,13 +12,13 @@ export class SkyDetails {
     if(!this.loading){
       this.loading=(async()=>{
         const pack=await loadSkyPolishPack();
-        this.art=Object.fromEntries(await Promise.all(['angerTile','angryVignette','candyGradient','tacoGradient',...candyNames]
+        this.art=Object.fromEntries(await Promise.all(['angerTile','sceneHearts','angryVignette','candyGradient','tacoGradient',...candyNames]
           .filter(key=>pack[key]).map(async key=>[key,await expandedImage(pack[key])])));
         this.scream={...pack.scream,image:await expandedImage(pack.scream.image)};
         [this.gesture,this.cup]=await Promise.all([loadExpandedAnimation(pack.bfGesture),loadExpandedAnimation(pack.picoCup)]);
         this.audio=audio;
         this.sounds=Object.fromEntries(await Promise.all(['tomatoThrow','tomatoSplat','boyfriendHawk']
-          .filter(name=>pack.audio[name]).map(async name=>[name,await audio.load('assets/expanded/'+pack.audio[name]).catch(()=>null)])));
+          .filter(name=>pack.audio[name]).map(async name=>[name,await audio.load(EXPANDED_BASE+pack.audio[name]).catch(()=>null)])));
       })().catch(error=>{this.loading=null;console.warn(error);});
     }
     await this.loading;
@@ -35,7 +36,15 @@ export class SkyDetails {
   }
 
   update(game,time,actors,random=Math.random){
-    if(!game.choice.stage?.startsWith('theShift')||game.custom||game.beat<0)return;
+    if(game.custom||game.beat<0)return;
+    if(game.choice.baseSong==='blissful'){
+      if(time>=980&&!game.skyWaved){
+        game.skyWaved=true;
+        actors.player.forced={name:'wave',since:980,until:2050,lock:true};
+      }
+      return;
+    }
+    if(!game.choice.stage?.startsWith('theShift'))return;
     const {choice,beat}=game;
     const state=game.skyDetails??={beat:-1,at:{},anger:0};
     const cue=(key,at,action)=>{
@@ -82,6 +91,16 @@ export class SkyDetails {
   }
 
   chartPose(game,role,name){
+    if(game.choice.baseSong==='blissful'){
+      if(name==='preDance'){
+        game.animationSuffix??={};
+        game.animationSuffix[role]={idle:role==='player'?'-caramel':'-alt'};
+        if(role==='player')game.skyDanceLock=true;
+      }else if(name==='hey'&&role==='player'){
+        game.skyDanceLock=false;
+        if(game.animationSuffix)delete game.animationSuffix.player;
+      }
+    }
     if(!game.choice.stage?.startsWith('theShift'))return;
     if(role==='opponent'&&name==='caramelTransition'){
       game.animationSuffix??={};
@@ -137,6 +156,13 @@ export class SkyDetails {
           ctx.drawImage(art,-w/2,-h/2,w,h);ctx.restore();
         }
       }
+      ctx.restore();
+    }
+    if(choice.stage==='theShiftScenecore'&&this.art.sceneHearts){
+      const tile=this.art.sceneHearts,x=time*.125%tile.width,y=time*.125%tile.height;
+      ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=.3;
+      for(let left=x-tile.width;left<1280;left+=tile.width)
+        for(let top=y-tile.height;top<720;top+=tile.height)ctx.drawImage(tile,left,top);
       ctx.restore();
     }
     if(this.art.angryVignette&&game.skyDetails?.anger){
