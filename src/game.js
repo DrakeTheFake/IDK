@@ -178,11 +178,12 @@ const coarsePointer=matchMedia('(pointer: coarse)');
 const mobileDevice=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 function viewAspect(){return viewportAspect;}
 function mobileActive(){return settings.touchLayout==='on'||settings.touchLayout!=='off'&&(coarsePointer.matches||mobileDevice);}
+function noteInputActive(){return scene==='play'&&!game?.vamp?.video;}
 function laneCount(){return game&&['play','paused','results','gameover'].includes(scene)?game.laneCount:settings.keyMode;}
 function laneDirection(lane){return laneCount()===6?SIX_DIRECTIONS[lane]:lane;}
 function playKeys(){return laneCount()===6?settings.keys6:settings.keys;}
 function laneLabel(lane){return DIRECTIONS[laneDirection(lane)]+(laneCount()===6?' '+(lane+1):'');}
-const touchControls=new TouchControls(document.querySelector('#game'),{active:()=>scene==='play'&&mobileActive(),lanes:laneCount,onPress:(lane,at)=>{held.add('touch'+lane);pressLane(lane,at);},onRelease:(lane,at)=>{held.delete('touch'+lane);releaseLane(lane,at);}});
+const touchControls=new TouchControls(document.querySelector('#game'),{active:()=>noteInputActive()&&mobileActive(),lanes:laneCount,onPress:(lane,at)=>{held.add('touch'+lane);pressLane(lane,at);},onRelease:(lane,at)=>{held.delete('touch'+lane);releaseLane(lane,at);}});
 function toggleKeyMode(){settings.keyMode=settings.keyMode===6?4:6;saveSettings();stopPreview();announce(settings.keyMode+' key mode');}
 function songChoice(index=songIndex,diff=difficulty,character=fp.character,instrumental=fp.instrumental){
  const song=SONGS[index],level=DIFFICULTIES[diff]?.toLowerCase()||'normal';if(song.mod)return modLibrary.choice(song,level,instrumental);
@@ -1261,8 +1262,8 @@ function runInput(code,device,event=null){
   if(matches('debugDisplay')){
     stop();const values=['Off','Simple','Advanced'];settings.debugDisplay=values[(values.indexOf(settings.debugDisplay)+1)%values.length];saveSettings();return;
   }
-  if(scene==='play'&&game?.vamp?.notes.length&&isKey&&code===settings.vampKey){stop();hitVampMiddle(audio.chartTime(event?.timeStamp),true);return;}
-  const lane=scene==='play'?noteLaneFor(settings,code,laneCount(),device):-1;
+  if(noteInputActive()&&game?.vamp?.notes.length&&isKey&&code===settings.vampKey){stop();hitVampMiddle(audio.chartTime(event?.timeStamp),true);return;}
+  const lane=noteInputActive()?noteLaneFor(settings,code,laneCount(),device):-1;
   if(lane>=0){stop();held.add(isKey?code:'pad'+lane);pressLane(lane,event?.timeStamp);return;}
   if(matches('volumeMute')){stop();settings.volume=settings.volume?0:.7;saveSettings();return;}
   if(matches('volumeUp')||matches('volumeDown')){stop();settings.volume=clamp(settings.volume+(matches('volumeUp')?.1:-.1),0,1);saveSettings();return;}
@@ -1310,7 +1311,7 @@ canvas.addEventListener('pointerup',event=>{if(scene==='gallery'&&gallerySwipe!=
 canvas.addEventListener('pointermove',event=>preferences.trackPointer(canvas,event.clientX,event.clientY));
 canvas.addEventListener('pointercancel',()=>gallerySwipe=null);
 document.querySelector('#game').addEventListener('wheel',e=>{if(scene==='settings'||scene==='freeplay'){e.preventDefault();if(Math.abs(e.deltaY)>5){const delta=Math.sign(e.deltaY);if(scene==='settings')preferences.wheel(delta);else navigate(delta);}}},{passive:false});
-function tick(timestamp){touchControls.update(scene==='play'&&mobileActive(),laneCount());frameTime=timestamp;const dt=clamp((timestamp-(lastFrame||timestamp))/1000,0,0.1);buttons=[];
+function tick(timestamp){touchControls.update(noteInputActive()&&mobileActive(),laneCount());frameTime=timestamp;const dt=clamp((timestamp-(lastFrame||timestamp))/1000,0,0.1);buttons=[];
   if(scene==='editor'||scene==='mods'){syncButtons();canvas.dataset.scene=scene;lastFrame=timestamp;scheduleFrame();return;}
   if(scene==='play'&&game&&lastFrame&&game.time>1000){game.frameTimes.push(timestamp-lastFrame);if(game.frameTimes.length>180)game.frameTimes.shift();}
   if(game&&Math.floor(timestamp/1000)!==Math.floor(lastFrame/1000)){const times=[...game.frameTimes].sort((a,b)=>a-b);canvas.dataset.frameP95=String(Math.round(times[Math.floor(times.length*0.95)]||0));canvas.dataset.frameMax=String(Math.round(times.at(-1)||0));canvas.dataset.character=game.character;canvas.dataset.level=game.choice.level;canvas.dataset.bpm=String(bpmAt(game.chart,game.time));canvas.dataset.lanes=String(game.laneCount);canvas.dataset.mobile=String(mobileActive());}
