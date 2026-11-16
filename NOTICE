@@ -66,3 +66,10 @@ from the supplied SKYREBORN archive by st4rcannon, GENZU and collaborators.
 The original mod's contributor credits, individual song credits, and media
 provenance are in assets/expanded/menu.json and assets/expanded/songs.json.
 The browser engine reimplements selected gameplay and cutscene behaviors.
+
+VS. Vamp 1.0.2 by st4rcannon and contributors is sourced from the installed
+WeekBox package (https://gamebanana.com/mods/734431). The original package lists
+CC BY 4.0 and MIT; creator and contributor credits are preserved in
+assets/expanded/vamp-credits.json and in the song catalogue. The Guns Erect
+chart and recording are sourced from Blake Expansion, with individual song
+credits retained in assets/expanded/songs.json.

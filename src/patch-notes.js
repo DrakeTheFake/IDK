@@ -1,5 +1,13 @@
 export const PATCH_NOTES = [
   {
+    title:'VS. Vamp and Tankman',
+    sections:[
+      ['VS. Vamp','Play Vamp, Violent, and Vivacious in Story Mode or Freeplay. Freeplay includes their Pico mixes and Erect charts. Use Space (or tap the middle receptor) for the blood notes.'],
+      ['Options','The VS. Vamp menu lets you rebind the middle note and change the game over voice language.'],
+      ['Tankman','Tankman stays airborne through the end of the phrase in Guns, including the Sky, Pico, and Blake Expansion Erect mixes. His “Pretty good” animation in Stress plays to the end.'],
+    ],
+  },
+  {
     title:'Sky cutscenes and stage fixes',
     sections:[
       ['Freeplay','Turn on Freeplay Story Cutscenes in Preferences to see campaign intros. Type SKY to unlock Sky Erect (Lyrics) in Boyfriend’s list. Choose Original, Always, or Never under Sky Reborn for random secrets.'],

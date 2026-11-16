@@ -1,0 +1,22 @@
+{
+  "id": "vs-vamp",
+  "title": "Vs. Vamp",
+  "description": "Vampire",
+  "author": "st4rcannon",
+  "contributors": [
+    {
+      "name": "st4rcannon",
+      "role": "son",
+      "url": "https://x.com/st4rcannon"
+    },
+    {
+      "name": "Nebula S. Nova",
+      "role": "Coded the space note",
+      "url": "https://x.com/NebulaSNova"
+    }
+  ],
+  "api_version": "0.8.4",
+  "mod_version": "1.0.2",
+  "license": "CC BY 4.0,MIT",
+  "url": "https://gamebanana.com/mods/734431"
+}

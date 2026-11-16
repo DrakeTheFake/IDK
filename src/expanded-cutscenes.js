@@ -192,6 +192,9 @@ export function expandedIntro(choice,{story=false,retry=false,editor=false}={}) 
   if (choice.variant==='sky'&&['senpai','roses','thorns'].includes(choice.baseSong)) return choice.baseSong+'-sky';
   if (choice.baseSong==='stress'&&choice.variant==='pico') return 'stressPicoCutscene';
   if (!story) return null;
+  if(choice.source==='vs-vamp')return choice.variant==='classic'?{
+    vamp:'vamp-summon',violent:'vamp-violent',vivacious:'vamp-vivacious',
+  }[choice.baseSong]:null;
   if(choice.variant==='sky'&&['ugh','guns','stress'].includes(choice.baseSong))return null;
   if(['wife-forever','sky','manifest'].includes(choice.baseSong)&&choice.variant!=='classic')return null;
   return {ugh:'ughCutscene',guns:'gunsCutscene',stress:choice.character==='pico'?'stressPicoCutscene':'stressCutscene',
@@ -202,6 +205,7 @@ export function expandedOutro(choice,story,{manifestLiquid='water'}={}) {
   if(choice.baseSong==='stress'&&choice.variant==='pico')return 'stress-pico-outro';
   if(choice.baseSong==='manifest'&&choice.variant==='pico'&&manifestLiquid!=='boiling')return 'manifest-pico-outro';
   if (!story) return null;
+  if(choice.source==='vs-vamp'&&choice.baseSong==='vivacious'&&choice.variant==='classic')return 'vamp-vivacious-outro';
   return {'2hot':'2hot-alley-outro',blazin:'blazinCutscene',manifest:'skyEndCredits'}[choice.baseSong];
 }
 

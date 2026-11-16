@@ -71,8 +71,20 @@ function streetZoom(game, stage, time) {
 
 export function officialStageLayout(game, stage, view) {
   const choice = game.choice;
-  if (!stage || !originalChoice(choice)) return view;
+  if (!stage || !choice) return view;
   const {time = 0, intro = false, cutsceneId, elapsed = time, reducedMotion = false} = view;
+  if (choice.baseSong === 'guns' && !intro && !cutsceneId && !reducedMotion && stage.characters?.dad) {
+    // In every authored mix the melody begins at beat 224 and Tankman hands
+    // the lead back at beat 256. Use the chart tempo, including any tempo changes.
+    const atBeat = beat => {
+      const tempo = game.chart?.tempos?.findLast(change => change.beat <= beat);
+      return (tempo?.time ?? 0) + (beat - (tempo?.beat ?? 0)) * 60000 / (tempo?.bpm ?? game.chart?.bpm ?? 185);
+    };
+    const start = atBeat(224), handoff = atBeat(256);
+    const lift = 174 * ease((time - start) / 4950) * (1 - ease((time - handoff) / 6000));
+    if (lift > 0) return {...view, actors: {opponent: {lift}}};
+  }
+  if (!originalChoice(choice)) return view;
   const result = {...view, pan: view.pan || 0, actors: {}, propZ: {}};
   if (STREET_STAGES.has(choice.stage)) {
     const scripted = streetCutsceneView(cutsceneId, elapsed);
@@ -99,16 +111,6 @@ export function officialStageLayout(game, stage, view) {
     result.originY = -99;
     // The Erect camera's offsets follow the actors while the backdrop retains parallax.
     if (intro || reducedMotion) result.pan = 0;
-  } else if (choice.baseSong === 'guns' && !intro && !cutsceneId && !reducedMotion) {
-    // The melody enters on beat 224 (185 BPM) and releases to BF on beat 256.
-    const lift = 174 * ease((time - 72648.65) / 4950) * (1 - ease((time - 79650) / 6000));
-    if (lift <= 0) return view;
-    result.originY += lift * .80;
-    result.pan -= lift * .58;
-    const dad = stage.characters?.dad;
-    if (dad) result.actors.opponent = {position: [result.originX + dad.position[0] * result.scale - result.pan,
-      result.originY + dad.position[1] * result.scale - lift]};
-    return result;
   } else return view;
 
   for (const [role, key] of Object.entries(STAGE_ROLES)) {

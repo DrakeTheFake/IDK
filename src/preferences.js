@@ -43,6 +43,7 @@ export const PREFERENCE_DEFAULTS = Object.freeze({
   freeplayStoryCutscenes: false, skySecretChance: 'Original',
   songRate:1, healthDrain:0, missDamage:1, instantFail:false, mirrorNotes:false, noFail:false,
   qtLanguage: 'english', qtSawbladeMode: 'default', qtPlushieButton: true,
+  vampKey:'Space', vampLanguage:'english',
 });
 
 const validKey = value => typeof value === 'string' && /^(?:Key[A-Z]|Digit[0-9]|Arrow(?:Left|Right|Up|Down)|F(?:[1-9]|1[0-2])|Numpad(?:[0-9]|Add|Subtract|Multiply|Divide|Decimal|Enter)|Bracket(?:Left|Right)|(?:Control|Shift|Alt)(?:Left|Right)|Space|Enter|Escape|Backspace|Tab|Home|End|PageUp|PageDown|Insert|Delete|CapsLock|Backquote|Backslash|Semicolon|Quote|Comma|Period|Slash|Minus|Equal)$/.test(value);
@@ -63,6 +64,8 @@ export function normalizePreferences(raw = {}, base = {}) {
   result.debugDisplay = ['Off', 'Simple', 'Advanced'].includes(raw.debugDisplay) ? raw.debugDisplay : 'Off';
   result.qtSawbladeMode = ['default', 'instakill', 'disabled'].includes(raw.qtSawbladeMode) ? raw.qtSawbladeMode : 'default';
   result.skySecretChance = SECRET_CHANCES.includes(raw.skySecretChance) ? raw.skySecretChance : 'Original';
+  result.vampKey = validKey(raw.vampKey) ? raw.vampKey : 'Space';
+  result.vampLanguage = ['english','japanese','spanish'].includes(raw.vampLanguage) ? raw.vampLanguage : 'english';
   result.qtLanguage = raw.qtLanguage === 'spanish' ? 'spanish' : 'english';
   result.bindings = {keyboard: {}, gamepad: {}};
   for (const [device, defaults] of Object.entries({keyboard: KEYBOARD, gamepad: GAMEPAD})) {
@@ -215,7 +218,7 @@ const REWIRED = [
 ];
 
 const ROOT_PAGES = [['preferences', 'Preferences'], ['controls', 'Controls'], ['rewired', 'Rewired Options'],
-  ['lag', 'Lag Adjustment'], ['save', 'Save Data Options'], ['sky', 'Sky Reborn']];
+  ['lag', 'Lag Adjustment'], ['save', 'Save Data Options'], ['sky', 'Sky Reborn'], ['vamp','VS. Vamp']];
 
 const BUTTON_LABELS = ['A','B','X','Y','LB','RB','LT','RT','Select','Start','L3','R3','D-Pad Up','D-Pad Down','D-Pad Left','D-Pad Right','Home'];
 const STICK_LABELS = ['Left','Down','Up','Right'];
@@ -388,6 +391,11 @@ export class PreferencesMenu {
     if (this.page === 'rewired') return [...REWIRED.filter(row => this.capabilities[row.capability]), action('Exit', () => this.back())];
     if (this.page === 'sky') return [flag('skyDisableMenus', 'Disable Menus', 'Revert the title and main menu to the original game style.'),
       choices('skySecretChance', 'Secret Chances', 'Use the original odds, guarantee the secret outcomes, or disable them.', SECRET_CHANCES), action('Exit', () => this.back())];
+    if (this.page === 'vamp') return [
+      choices('vampLanguage','Voiceline Language','Choose the language for the original VS. Vamp game over voices.', ['english','japanese','spanish'],titleCase),
+      action('Middle Note Key: '+inputLabel(this.settings.vampKey),()=>{this.rebind={action:'vampKey',device:'keyboard'};}),
+      action('Exit',()=>this.back()),
+    ];
     if (this.page === 'lag') return [number('offset','Offset (Global)','Positive values delay notes to match delayed audio.',-1500,1500,1), action('Reset Offset',() => this.change('offset',0)), action('Offset Calibration',() => this.beginLag('calibrate')), action('Auto Estimate',() => this.autoLag()), action('Test',() => this.beginLag('test'))];
     if (this.page === 'save') return [
       ...(this.exportSave ? [action('Export Save Data', () => this.exportSave())] : []),
@@ -447,6 +455,12 @@ export class PreferencesMenu {
 
   bind(value) {
     const {action: control, column, device} = this.rebind;
+    if(control==='vampKey'){
+      if(value!=null&&!validKey(value))return;
+      this.change('vampKey',value??'Space');
+      this.rebind=null;
+      return;
+    }
     const map = this.settings.bindings[device];
     const current = map[control];
     if (value === 'Digit7') { this.announce('7 opens the chart editor. Choose another key.'); return; }

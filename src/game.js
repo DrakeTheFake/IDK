@@ -30,6 +30,7 @@ import {updateChartEvents} from './song-events.js';
 import {drawABot} from './abot.js';
 import {ModLibrary,ModManager} from './mods.js';
 import {drawModCharacter,drawModStageProps} from './mod-visuals.js';
+import {isVamp,createVampGameplay,vampHit,updateVampNotes,vampStageCue,vampSceneActors,vampQuote,vampAtmosphere,vampPose} from './vamp.js';
 
 const canvas=document.querySelector('#screen'),ctx=canvas.getContext('2d',{alpha:false});
 const buttonLayer=document.querySelector('#buttons'),announcement=document.querySelector('#announcement');
@@ -53,12 +54,20 @@ let skyMenu=null,skySelectLoad=null,skyDJLoad=null,skySecret='';
 async function loadExpandedMenu(){
   const menu=await expandedJSON('menu.json');skyMenu=menu.sky;nativeResults.sky=skyMenu;
   const storyImages=[];
+  if(menu.vamp){skyMenu.albums.vampvol1=menu.vamp;storyImages.push(menu.vamp.albumArt,menu.vamp.albumTitle,menu.vamp.capsule);}
   for(const week of EXPANDED_WEEKS){Object.assign(week,menu.weeks[week.id]);storyImages.push(week.storyProp,week.titleImage,week.storyPlayer,week.storyPartner);}
   modernFreeplay.characterIcons={};
   for(const [id,{name,atlas}] of Object.entries(menu.icons)){modernFreeplay.characterIcons[id]=name;modernFreeplay.atlases[name]=atlas;}
   await assets.ensure([...storyImages,...Object.values(modernFreeplay.characterIcons)]);
   for(const name of storyImages.filter(Boolean))assets.lazyNames.delete(name);
   for(const name of Object.values(modernFreeplay.characterIcons)){modernFreeplay.images[name]=assets.images[name];assets.lazyNames.delete(name);}
+  if(menu.vamp){
+    modernFreeplay.images.vampvol1=assets.images[menu.vamp.albumArt];
+    modernFreeplay.images.vampvol1title=assets.images[menu.vamp.albumTitle];
+    modernFreeplay.atlases.vampvol1title=assets.atlases[menu.vamp.albumTitle];
+    modernFreeplay.images.vampCapsule=assets.images[menu.vamp.capsule];
+    modernFreeplay.atlases.vampCapsule=assets.atlases[menu.vamp.capsule];
+  }
   modernFreeplay.skyAlbums=skyMenu.albums;
 }
 async function loadSkySelection(){
@@ -117,7 +126,7 @@ async function runExpandedSequence(id,script=null){
 }
 function drawExpandedSequence(){
   const offset=game.completed?game.time:0;
-  const subtitles=expandedCutscenes.draw(ctx,frameTime,{stage:(elapsed,view)=>{game.beat=beatAt(game.chart,elapsed);return drawStage(offset+elapsed,{...view,elapsed,cutsceneId:expandedCutscenes.current?.id});},
+  const subtitles=expandedCutscenes.draw(ctx,frameTime,{stage:(elapsed,view)=>{game.beat=beatAt(game.chart,elapsed);const id=expandedCutscenes.current?.id,vamp=vampSceneActors(id,nativeContent.data.vamp?.cutscenes);return drawStage(offset+elapsed,{...view,...(vamp?{camera:vamp.camera,vampActors:vamp.actors}:{}),elapsed,cutsceneId:id});},
     pose:(at,role,name,duration=950,speed=1)=>{const actor=role==='player'?actorBF:role==='opponent'?actorDad:actorGF;actor.forced={name,since:offset+at,until:offset+at+duration,speed,lock:true};}});
   canvas.dataset.dialogue=subtitles;
   newButton('cutscene-next','Continue or skip cutscene',0,0,1280,720,()=>expandedCutscenes.advance(false));
@@ -188,6 +197,12 @@ function songChoice(index=songIndex,diff=difficulty,character=fp.character,instr
 }
 
 async function rawChoice(choice){if(choice.mod)return modLibrary.chart(choice);if(choice.rawData)return structuredClone(choice.rawData);const response=await fetch(choice.chartUrl);if(!response.ok)throw new Error('The song chart could not be loaded.');return readJSON(await response.text());}
+async function prepareExitStickers(choice){
+  if(!isVamp(choice))return skyDetails.prepareStickers(choice);
+  const names=nativeContent.data.vamp[choice.variant==='pico'?'vamp-stickers-pico':'vamp-stickers'];
+  await assets.ensure(names);
+  return names.map(name=>assets.images[name]);
+}
 async function loadChoiceTracks(choice){
   await audio.unlock();
   const sources=choice.mod?await modLibrary.audioSources(choice):{urls:choice.audioUrls,offsets:choice.audioOffsets||choice.audioUrls.map(()=>0)};
@@ -296,14 +311,14 @@ function syncButtons(){
   for(const b of buttons){buttonData.set(b.id,b);let el=buttonNodes.get(b.id);if(!el){el=document.createElement('button');el.className='hitbox';el.dataset.id=b.id;
       el.addEventListener('click',e=>{const current=buttonData.get(b.id);if(!current||current.lane!==undefined||current.tapOnDown&&e.detail>0)return;e.preventDefault();audio.unlock().catch(()=>{});current.action(e);canvas.focus({preventScroll:true});});
       el.addEventListener('focus',()=>{const current=buttonData.get(b.id);if(current?.select!==undefined&&selected!==current.select){selected=current.select;audio.sfx('scrollMenu',0.5);}});
-      el.addEventListener('pointerdown',e=>{const current=buttonData.get(b.id);if(current?.tapOnDown){e.preventDefault();current.action(e);canvas.focus({preventScroll:true});return;}if(current?.lane===undefined)return;e.preventDefault();el.setPointerCapture(e.pointerId);pointerLanes.set(e.pointerId,current.lane);held.add('touch'+current.lane);pressLane(current.lane,e.timeStamp);});
+      el.addEventListener('pointerdown',e=>{const current=buttonData.get(b.id);if(current?.tapOnDown){e.preventDefault();if(current.exclusive)e.stopPropagation();current.action(e);canvas.focus({preventScroll:true});return;}if(current?.lane===undefined)return;e.preventDefault();el.setPointerCapture(e.pointerId);pointerLanes.set(e.pointerId,current.lane);held.add('touch'+current.lane);pressLane(current.lane,e.timeStamp);});
       const release=e=>{const lane=pointerLanes.get(e.pointerId);if(lane!==undefined){pointerLanes.delete(e.pointerId);if(![...pointerLanes.values()].includes(lane)){held.delete('touch'+lane);releaseLane(lane,e.timeStamp);}}};el.addEventListener('pointerup',release);el.addEventListener('pointercancel',release);
       buttonNodes.set(b.id,el);buttonLayer.append(el);
     }
     if(el.getAttribute('aria-label')!==b.label)el.setAttribute('aria-label',b.label);const layout=`left:${b.x/12.8}%;top:${b.y/7.2}%;width:${b.w/12.8}%;height:${b.h/7.2}%;`;if(el.dataset.layout!==layout){el.style.cssText=layout;el.dataset.layout=layout;}
   }
 }
-function enter(next,index=0){if(scene==='cutscene'&&next!=='cutscene')expandedCutscenes.stop(false);if(scene==='gallery'&&next!=='gallery')skyGallery.stop();if(scene==='intro'&&next!=='intro'){storyIntros.stop();if(introWaiter){introWaiter.resolve(false);introWaiter=null;}}if(scene==='results'&&next!=='results')nativeResults.stop();sceneTransitions.begin(canvas,scene,next,{reducedMotion:settings.reducedMotion,
+function enter(next,index=0){if(scene==='play'&&next!=='play')game?.vamp?.video?.pause();if(game?.vamp?.video&&['menu','freeplay','story','results','gameover','loading'].includes(next)){game.vamp.video.removeAttribute('src');game.vamp.video.load();game.vamp.video=null;}if(scene==='cutscene'&&next!=='cutscene')expandedCutscenes.stop(false);if(scene==='gallery'&&next!=='gallery')skyGallery.stop();if(scene==='intro'&&next!=='intro'){storyIntros.stop();if(introWaiter){introWaiter.resolve(false);introWaiter=null;}}if(scene==='results'&&next!=='results')nativeResults.stop();sceneTransitions.begin(canvas,scene,next,{reducedMotion:settings.reducedMotion,
   stickers:['play','paused','results','gameover','cutscene'].includes(scene)&&['freeplay','story','menu'].includes(next)?game?.exitStickers||'cards':null});if(scene==='freeplay'&&next!=='freeplay'){stopPreview();finishRankReveal(false);}scene=next;sceneAt=performance.now();selected=index;transition=0;buttonSignature='';held.clear();pointerLanes.clear();touchControls.clear();if(next==='freeplay'){songIndex=SONGS[index]?index:songIndex;const list=freeplaySongs();if(!list.includes(SONGS[songIndex])&&list.length)songIndex=SONGS.indexOf(list[0]);fp.selectedId=list.includes(SONGS[songIndex])?SONGS[songIndex].id:'random';if(fp.character==='sky')loadSkyDJ();normalizeDifficulty();const pending=pendingRankReveal;pendingRankReveal=null;
 if(pending&&pending.song===fp.selectedId&&pending.character===fp.character&&pending.level===difficulty)rankReveal={...pending,at:sceneAt+(sceneTransitions.blocking?sceneTransitions.duration:0),cue:0};
 else fp.previewTimer=setTimeout(schedulePreview,sceneTransitions.blocking?sceneTransitions.duration:0);}if(next==='story'&&!storyDifficulties().includes(difficulty))difficulty=1;if(next==='paused')audio.playMenu(pauseMusic());else if(!(settingsReturn==='paused'&&next==='settings')&&!['play','loading','gameover','paused','results','result-loading','editor','mods','character','intro','cutscene','gallery'].includes(next))audio.playMenu();announce(next==='menu'?'Main menu. Story mode, Freeplay, Donate and credits, Options.':next==='freeplay'?`Freeplay. ${SONGS[songIndex].name}. ${DIFFICULTIES[difficulty]}.`:next==='story'?`Story mode. Week ${WEEKS[storyWeek].id}: ${WEEKS[storyWeek].name}. ${DIFFICULTIES[difficulty]}.`:next==='settings'?'Options. Use up and down to select, left and right to change.':next==='controls'?'Key bindings. Select a direction and press Enter to change its key.':next);}
@@ -482,9 +497,11 @@ function drawCredits(){menuBackground('menuBGMagenta');rect(60,30,1160,652,'#000
 async function getChart(index,diff,character=fp.character){const choice=songChoice(index,diff,character),key=choice.chartUrl;if(!chartCache.has(key))chartCache.set(key,rawChoice(choice).then(parseChart));return chartCache.get(key);}
 async function startSong(index,isStory=false,continueStory=false,override=null,entry={}){
   const generation=++loadGeneration;pendingRankReveal=null;songIndex=index;story=isStory;const character=isStory?storyCharacter():entry.character||fp.character;normalizeDifficulty(index,character);if(!continueStory){storyTotal=0;storyStats=[];storyUsedModifiers=false;}audio.stop();audio.stopMenu();enter('loading');errorText='';announce(`Loading ${SONGS[index].name}. ${DIFFICULTIES[difficulty]}.`);
-  try{await audio.unlock();let choice=songChoice(index,difficulty,character,isStory?'default':fp.instrumental);if(override?.raw){const raw=override.raw.song;choice={...choice,character:playerIdentity(raw.player1||choice.character),opponent:raw.player2||choice.opponent,stage:raw.stage||choice.stage,characters:{...choice.characters,player:raw.player1||choice.characters?.player,opponent:raw.player2||choice.characters?.opponent,girlfriend:raw.gfVersion??raw.player3??choice.characters?.girlfriend}};choice.visualOverrides={characters:choice.characters,stage:choice.stage};choice.noteTexture=raw.noteTexture;}let [chart,originalDuration,modVisuals,exitStickers]=await Promise.all([override?Promise.resolve(parseChart(override.raw)):getChart(index,difficulty,character),prepareChoice(choice),choice.mod?modLibrary.getVisuals(choice,assets):Promise.resolve(null),skyDetails.prepareStickers(choice),audio.warmEffects(),prepareSceneAssets(choice)]);if(generation!==loadGeneration)return;
+  try{await audio.unlock();let choice=songChoice(index,difficulty,character,isStory?'default':fp.instrumental);if(override?.raw){const raw=override.raw.song;choice={...choice,character:playerIdentity(raw.player1||choice.character),opponent:raw.player2||choice.opponent,stage:raw.stage||choice.stage,characters:{...choice.characters,player:raw.player1||choice.characters?.player,opponent:raw.player2||choice.characters?.opponent,girlfriend:raw.gfVersion??raw.player3??choice.characters?.girlfriend}};choice.visualOverrides={characters:choice.characters,stage:choice.stage};choice.noteTexture=raw.noteTexture;}let [chart,originalDuration,modVisuals,exitStickers]=await Promise.all([override?Promise.resolve(parseChart(override.raw)):getChart(index,difficulty,character),prepareChoice(choice),choice.mod?modLibrary.getVisuals(choice,assets):Promise.resolve(null),prepareExitStickers(choice),audio.warmEffects(),prepareSceneAssets(choice,(isStory||settings.freeplayStoryCutscenes)&&!override)]);if(generation!==loadGeneration)return;
     if(override?.audio){for(const i of [0,1])if(override.audio[i])audio.buffers[i]=override.audio[i];if(override.audio[1])audio.buffers.length=2;}audio.allowVoices=override?.raw?.song?.needsVoices!==false;const extraOffset=Number(override?.raw?.song?.offset)||0;if(extraOffset)audio.trackOffsets=audio.trackOffsets.map(offset=>offset+extraOffset);const duration=originalDuration+extraOffset;
     if(settings.keyMode===6)chart=chartForSixKeys(chart);comboFeedback.reset();const notes=chart.notes.map(n=>({...n,hit:false,missed:false,holdDone:0,holdBroken:false,started:false}));game={chart,notes,duration,modVisuals,exitStickers,speakerIndex:0,laneCount:chart.laneCount||4,eventIndex:0,eventFocus:null,eventZoom:1,eventScroll:1,eventBop:{},lastLightning:-30,lightningAt:-99999,lightningDelay:8,stats:{...makeStats(),totalNotes:notes.filter(n=>n.player).length},opponentIndex:0,scanIndex:0,startTime:-60000/chart.bpm*5,time:-60000/chart.bpm*5,beat:-6,lastBeat:-6,rating:null,particles:[],splashes:[],completed:false,chartPlayer:chart.sections[0]?.player||false,practice:settings.practice,botplay:settings.botplay,custom:!!override,override,choice,character:choice.character,frameTimes:[]};
+    game.vamp=createVampGameplay(choice,chart,(isStory||settings.freeplayStoryCutscenes)&&!entry.retry&&!override);
+    game.stats.totalNotes+=game.vamp?.notes.length||0;
     game.secretChance=settings.skySecretChance;
     game.skyTomatoDance=choice.baseSong==='wife-forever'&&choice.variant==='pico'&&rollSecret(game.secretChance,.25);
     applySongModifiers();
@@ -562,7 +579,7 @@ function laneHeld(lane){
 
 function laneFromCode(code){return noteLaneFor(settings,code,laneCount());}
 
-function noteSpecial(note,actor,time){if(note.kind)expandedNote(game,note,time,{player:actorBF,opponent:actorDad},(sound,gain)=>audio.sfx(sound,gain));if(/^(hey!?|cheer)$/i.test(String(note.kind||'')))actor.forced={name:String(note.kind).toLowerCase().startsWith('hey')?'hey':'cheer',since:time,until:time+60000/bpmAt(game.chart,time),lock:true};}
+function noteSpecial(note,actor,time){if(note.kind)expandedNote(game,note,time,{player:actorBF,opponent:actorDad},(sound,gain)=>audio.sfx(sound,gain),false,(role,name)=>nativeContent.animationDuration(game.choice.characters?.[role],name,role==='player'));if(/^(hey!?|cheer)$/i.test(String(note.kind||'')))actor.forced={name:String(note.kind).toLowerCase().startsWith('hey')?'hey':'cheer',since:time,until:time+60000/bpmAt(game.chart,time),lock:true};}
 function hit(note,time,auto=false){
   if(isOfficialCanNote(game.choice,'firegun')&&note.kind==='weekend-1-firegun'&&!canFire(game,time)){miss(note,time);return;}
   note.hit=true;note.started=true;const delta=time-note.time;const j=applyHit(game.stats,delta);if(!j)return;comboFeedback.hit(note,time,game.stats.combo,bpmAt(game.chart,time),game.botplay);laneFlashes[note.lane]=frameTime+145;animateNote(actorBF,note,time);noteSpecial(note,actorBF,time);audio.muteVoices(false);game.rating={name:j.name,since:frameTime,combo:game.stats.combo,delta};if(j.name==='sick'&&settings.noteSplash!==false&&!settings.reducedMotion){game.splashes.push({lane:note.lane,at:frameTime,variant:1+Math.floor(Math.random()*2)});}}
@@ -587,6 +604,36 @@ function updateHold(note,time,pressed){
   }
   note.holdComplete=progress.complete;
 }
+function hitVampMiddle(time,manual=false){
+  const state=game?.vamp;
+  if(!state?.notes.length||manual&&(scene!=='play'||game.botplay)||time < -HIT_WINDOW)return;
+  const hit=vampHit(state,time,game.stats);
+  if(hit?.judgement){
+    const name=Math.random()<.67?'hey':'cheer',duration=nativeContent.animationDuration(stageCharacterId('player'),name,true);
+    if(duration)actorBF.forced={name,since:time,until:time+duration,lock:true};
+    game.rating={name:hit.judgement.name,since:frameTime,combo:game.stats.combo,delta:hit.delta};
+    audio.sfx('VAMP_bloodNoteDodge',.55);
+  }else if(manual&&!settings.ghostTapping&&time>0&&!mobileActive()){
+    vampMissDamage();
+    audio.sfx('missnote1',.18);
+  }
+}
+function vampMissDamage(){
+  const health=game.stats.health;
+  applyGameplayMiss();
+  game.stats.health=Math.min(game.stats.health,Math.max(0,health-.24*game.modifiers.damage));
+  game.stats.score-=10;
+  return health;
+}
+function missVampMiddle(time){
+  const state=game.vamp,health=vampMissDamage();
+  state.bloodPhase=time-(state.bloodAt??-Infinity)<5000?Math.min(3,(state.bloodPhase||0)+1):1;
+  state.bloodAt=time;
+  if(state.bloodPhase===3){state.drainAt=time;state.drainDuration=health>1?3500:6000;}
+  animateActor(actorBF,Math.floor(Math.random()*laneCount()),time,true);
+  game.rating={name:'miss',since:frameTime,combo:0,delta:0};
+  audio.sfx('VAMP_bloodNote',.7);
+}
 function releaseLane(lane,eventAt){
   if(scene!=='play'||!game||game.botplay||lane<0||laneHeld(lane))return;
   const time=audio.chartTime(eventAt);
@@ -600,12 +647,26 @@ updateChartEvents(game,time,{bpm:bpmAt(game.chart,time),animate:(target,name,sin
     ['caramelTransition','tomatoThrow','tomatoHit'].includes(name))return;
   skyDetails.chartPose(game,role,name);
   const alias=nativeContent.character(stageCharacterId(role),role==='player')?.animationMap?.[name];
-  const frames=alias?.frameIndices?.length||alias?.frameCount;
-  const duration=frames?frames*1000/(alias.fps||24):name==='pointing'?69*1000/24:1200;
+  const frames=alias?.frameIndices?.length||alias?.frameCount||(isVamp(game.choice)?vampPose(nativeContent.data.vamp,stageCharacterId(role),name)?.frames:0);
+  const duration=frames?frames*1000/(alias?.fps||24):name==='pointing'?69*1000/24:1200;
   actor.forced={name,prefix:name,since,until:since+duration,lock};audio.muteVoices(false);}});nativeContent.updateStage(game,time);}
 function updateGame(dt){
   if(!game)return;const time=game.time=audio.chartTime();const beat=beatAt(game.chart,time);game.beat=beat;if(skyPolish.updateTutorial(game,time,{audio,finish:finishSong}))return;updateSongEvents(time);skyPolish.updateManifest(game,time,{audio,actors:{player:actorBF,opponent:actorDad,girlfriend:actorGF}});
   skyDetails.update(game,time,{player:actorBF,opponent:actorDad,girlfriend:actorGF});
+  if(game.vamp){
+    updateVampNotes(game.vamp,time,game.botplay,hitVampMiddle,missVampMiddle);
+    if(!settings.reducedMotion)vampStageCue(game,time,(name,gain)=>audio.sfx(name,gain));
+    const drain=game.vamp.drainAt==null?0:.5*clamp(1-(time-game.vamp.drainAt)/game.vamp.drainDuration,0,1);
+    if(drain&&!game.practice&&!game.botplay)game.stats.health=Math.max(0,game.stats.health-drain*dt);
+    const video=game.vamp.video,at=audio.time()/1000;
+    if(video&&at>=0&&beat<32){
+      video.playbackRate=game.modifiers.rate;
+      if(video.readyState>=2&&!video.seeking&&Math.abs(video.currentTime-at)>.18)video.currentTime=at;
+      if(video.paused&&!video.ended&&!game.vamp.startingVideo){
+        game.vamp.startingVideo=true;video.play().catch(()=>{}).finally(()=>{if(game?.vamp?.video===video)game.vamp.startingVideo=false;});
+      }
+    }else if(video&&beat>=32){video.pause();video.removeAttribute('src');video.load();game.vamp.video=null;}
+  }
   const countdownTime=audio.time(),count=Math.floor(countdownTime/(60000/game.chart.bpm));
   if(countdownTime<0&&count!==lastCountdown){
     lastCountdown=count;
@@ -640,16 +701,33 @@ function updateGame(dt){
 function missHold(note,time){applyGameplayMiss();audio.muteVoices(true);game.rating={name:'miss',since:frameTime,combo:0,delta:0};}
 async function runStorySequence(id,storyCutscene=story){const generation=loadGeneration,current=game;if(scene!=='loading')enter('loading');await storyIntros.load(id);if(generation!==loadGeneration||current!==game)return false;storyIntros.begin(id,{now:performance.now(),volume:settings.volume,reducedMotion:settings.reducedMotion,story:storyCutscene,character:game.character,variation:game.choice.variant||'',charting:game.custom,cameraStart:[850,500],cameraStartZoom:.8,censored:settings.naughtyness===false,subtitles:settings.subtitles!==false});if(storyIntros.done)return true;introAnnouncement='';enter('intro');return new Promise(resolve=>introWaiter={resolve,generation,current});}
 function drawStorySequence(){storyIntros.update(frameTime);const elapsed=frameTime-sceneAt,stageTime=Math.max(0,game.time)+elapsed;game.beat=beatAt(game.chart,stageTime);ctx.save();const focus=storyIntros.cameraFocus;if(focus){const stage=nativeContent.stage(game.choice),worldScale=stage?.view?.scale??.8,ox=stage?.view?.x??40,oy=stage?.view?.y??-70;ctx.translate(640,360);ctx.scale(storyIntros.cameraZoom/worldScale,storyIntros.cameraZoom/worldScale);ctx.translate(-(ox+worldScale*focus[0]),-(oy+worldScale*focus[1]));}drawStage(stageTime);ctx.restore();const targets=storyIntros.draw(ctx,{now:frameTime,volume:settings.volume});for(const target of targets)newButton(target.id,target.label,target.x,target.y,target.w,target.h,()=>storyIntros[target.action](performance.now()));const shown=storyIntros.phase==='dialogue'?storyIntros.currentText(frameTime):'';canvas.dataset.dialogue=shown;canvas.dataset.dialogueLine=String(storyIntros.pageIndex??0);canvas.dataset.introPhase=storyIntros.phase;if(storyIntros.phase==='dialogue'){const full=storyIntros.page?.text||'';if(full!==introAnnouncement){introAnnouncement=full;announce(full);}}if(storyIntros.done&&introWaiter){const waiting=introWaiter;introWaiter=null;waiting.resolve(waiting.generation===loadGeneration&&waiting.current===game);}}
-function deathConfig(){const id=game?.choice.characters?.player,character=nativeContent.character(id,true),pixel=nativeContent.data.uiPixelGameover?.[id],first=character?.animationMap?.firstDeath;return{id,character,pixel,sounds:skyDeathSounds(id,settings.naughtyness!==false),duration:first?(first.frameIndices?.length||first.frameCount||24)/(first.fps||24)*1000:game?.character==='pico'?2000:1200};}
+function deathConfig(){
+  const combust=isVamp(game?.choice)&&game.choice.baseSong!=='vamp'&&settings.naughtyness!==false;
+  const pico=game?.choice.variant==='pico',id=combust?(pico?'vamp-death-pico':'vamp-death-bf'):game?.choice.characters?.player;
+  const character=nativeContent.character(id,true),pixel=nativeContent.data.uiPixelGameover?.[id],first=character?.animationMap?.firstDeath;
+  const sounds=combust?{loss:'VAMP_fnf_loss_sfx-combust'+(pico?'-pico':''),loop:'gameOver',confirm:'gameOverEnd'}:skyDeathSounds(id,settings.naughtyness!==false);
+  return{id,character,pixel,sounds,duration:first?(first.frameIndices?.length||first.frameCount||24)/(first.fps||24)*1000:game?.character==='pico'?2000:1200};
+}
 function gameOver(){pendingRankReveal=null;audio.stop();const death=deathConfig();const specific=death.sounds?.loss||(death.id==='pico-blazin'?'W7W1_fnf_loss_sfx-pico-gutpunch':death.id==='pico-holding-nene'?'W7W1_fnf_loss_sfx-pico-and-nene':null);audio.sfx(specific||(death.pixel?death.pixel.lossSound.split('/').at(-1).replace(/\.ogg$/,''):'fnf_loss_sfx'));enter('gameover');const current=game;
   setTimeout(()=>{
     if(scene!=='gameover'||game!==current||game.retryAt)return;
     audio.playMenu(death.sounds?.loop||(death.pixel?death.pixel.loopMusic.split('/').at(-1).replace(/\.ogg$/,''):'gameOver'));
     const quote=tankmanDeathQuote(death.id,game.choice.opponent,settings.naughtyness!==false);
     if(quote)audio.sfx(quote,.78);
-  },death.pixel||death.sounds?death.duration:1200);announce('Game over. Enter to retry. Escape for menu.');}
+  },death.pixel||death.sounds?death.duration:1200);
+  const vamp=vampQuote(game.choice,settings.vampLanguage);
+  if(vamp)setTimeout(async()=>{
+    if(scene!=='gameover'||game!==current||game.retryAt)return;
+    const voice=await audio.load(''+vamp.name+'.ogg').catch(()=>null);
+    if(!voice||scene!=='gameover'||game!==current||game.retryAt)return;
+    const menu=audio.menu;
+    if(menu)menu.volume=settings.volume*.14;
+    audio.playEffect(voice,.9);
+    setTimeout(()=>{if(menu&&audio.menu===menu)audio.updateVolume();},voice.duration*1000);
+  },vamp.delay);
+  announce('Game over. Enter to retry. Escape for menu.');}
 async function finishSong(){
-  game.completed=true;audio.stop();const finishedGame=game,generation=loadGeneration,extra=game.custom?null:expandedOutro(game.choice,story,{manifestLiquid:game.skyManifestLiquid});if(extra&&(!await runExpandedSequence(extra)||finishedGame!==game||generation!==loadGeneration))return;const outro=game.custom?null:songOutro(SONGS[songIndex].id,{story,variant:game.choice.variant});if(outro){try{const complete=await runStorySequence(outro);if(!complete||finishedGame!==game||generation!==loadGeneration)return;}catch(error){console.error(error);announce('Cutscene could not load: '+error.message);}}const s=game.stats,forcedRank=game.forcedResultRank;const legitimate=!game.practice&&!game.botplay&&!game.custom&&!game.usedModifiers&&(!story||!storyUsedModifiers);
+  game.completed=true;audio.stop();const finishedGame=game,generation=loadGeneration,extra=game.custom?null:expandedOutro(game.choice,story||isVamp(game.choice)&&settings.freeplayStoryCutscenes,{manifestLiquid:game.skyManifestLiquid});if(extra&&(!await runExpandedSequence(extra)||finishedGame!==game||generation!==loadGeneration))return;const outro=game.custom?null:songOutro(SONGS[songIndex].id,{story,variant:game.choice.variant});if(outro){try{const complete=await runStorySequence(outro);if(!complete||finishedGame!==game||generation!==loadGeneration)return;}catch(error){console.error(error);announce('Cutscene could not load: '+error.message);}}const s=game.stats,forcedRank=game.forcedResultRank;const legitimate=!game.practice&&!game.botplay&&!game.custom&&!game.usedModifiers&&(!story||!storyUsedModifiers);
   if(legitimate){
     const old=bestFor(songIndex,game.character,difficulty),oldRank=storedRank(old),newRank=forcedRank||nativeResultRank(s);
     const improved=!!newRank&&FP_RANK_ORDER.indexOf(newRank)>FP_RANK_ORDER.indexOf(oldRank);
@@ -665,11 +743,11 @@ async function finishSong(){
   if(story){storyTotal+=s.score;storyStats.push(structuredClone(s));const list=WEEKS[storyWeek].songs,i=list.indexOf(SONGS[songIndex].id);if(i<list.length-1){startSong(SONGS.findIndex(s=>s.id===list[i+1]),true,true);return;}if(legitimate&&storyTotal>storage.get('week:'+WEEKS[storyWeek].id+':'+difficulty,0))storage.set('week:'+WEEKS[storyWeek].id+':'+difficulty,storyTotal);}
   const resultStats=story?combinedStats():game.stats;resultStats.score=story?storyTotal:game.stats.score;enter('result-loading');try{await nativeResults.prepare(resultStats,{character:game.character,rank:forcedRank});if(scene!=='result-loading')return;nativeResults.begin({stats:resultStats,title:story?WEEKS[storyWeek].name:SONGS[songIndex].name,difficulty:DIFFICULTIES[difficulty],character:game.character,rank:forcedRank||nativeResultRank(resultStats),naughty:settings.naughtyness!==false,isNewHighscore:!!game.newHighscore,practice:game.practice,autoplay:game.botplay,volume:settings.volume,reducedMotion:settings.reducedMotion});}catch(error){console.error(error);announce('Results artwork could not load: '+error.message);}enter('results');announce(`${story?'Week '+WEEKS[storyWeek].id:SONGS[songIndex].name} complete. Score ${story?storyTotal:s.score}. Accuracy ${accuracy(s).toFixed(2)} percent.`);
 }
-function laneX(lane,player){const count=laneCount();if(mobileActive()){
+function laneX(lane,player){const count=laneCount(),middle=player&&game?.vamp?.notes.length?(lane<count/2?-1:1)*(mobileActive()?26:42):0;if(mobileActive()){
   if(!player)return 22+lane*38;
   const {left,stride}=mobileLaneRegion(count);
-  return left+(lane+.5)*stride-56;
- }if(settings.middlescroll||game?.choice.baseSong==='blazin')return player?(1280-count*112)/2+lane*112:-600;const spacing=count===6?88:112;return (player?(count===6?696:732):(count===6?40:92))+lane*spacing;}
+  return left+(lane+.5)*stride-56+middle;
+ }if(settings.middlescroll||game?.choice.baseSong==='blazin')return player?(1280-count*112)/2+lane*112+middle:-600;const spacing=count===6?88:112;return (player?(count===6?654:687):(count===6?40:92))+lane*spacing+middle+(player&&!middle?(count===6?42:45):0);}
 
 function receptorY(){return mobileActive()||settings.downscroll?565:50;}
 
@@ -700,6 +778,16 @@ function stageCharacterId(role){
 function drawSceneCharacterRaw(role,actor,position,time,stageScale=null,globalOffsets=true){const id=stageCharacterId(role);if(!id||id==='none')return role==='girlfriend';actor=actor||(role==='girlfriend'?actorGF:null);const config=game.modVisuals?.characters[role],bpm=bpmAt(game.chart,time),period=game.eventBop[role]??(role==='girlfriend'?1:dancePeriod(bpm)),idle=!actor||actor.direction==='idle'||time>actor.until,forced=actor?.forced&&time<actor.forced.until?actor.forced:null;
  if(config){drawModCharacter(ctx,assets,config,{x:position[0],y:position[1],scale:role==='girlfriend'?0.62:0.65,direction:idle?'idle':actor.direction,animation:forced?.name,time:forced?time-forced.since:idle?period===0?0:((game.beat%period+period)%period)*60000/bpm:time-actor.since,beat:game.beat,bopBeats:period,player:role==='player'});return true;}
  const options={x:position[0],y:position[1],scale:stageScale??(role==='girlfriend'?0.62:role==='player'?0.66:0.7),time,naughtyness:settings.naughtyness!==false,beat:game.beat,bpm,period,player:role==='player',globalOffsets,suffix:game.animationSuffix?.[role],...role==='girlfriend'?nativeContent.partnerOverride(game,time,id):{}};
+ if(role==='player'&&isVamp(game.choice)){
+   const name=forced?.name||(id==='bf-car'&&!idle&&actor.direction==='UP'?'cheer':null);
+   const art=vampPose(nativeContent.data.vamp,id,name);
+   if(art&&(name!=='fuckyouu'||settings.naughtyness!==false)){
+     const [l,t,r,b]=art.bounds,[ox,oy]=art.offsets||[0,0],s=options.scale;
+     const idx=clamp(Math.floor((time-(forced?.since??actor.since))*.024),0,art.frames-1);
+     ctx.save();ctx.translate(position[0],position[1]);if(id.startsWith('pico'))ctx.scale(-1,1);
+     atlasFrame(art.name,art.prefix,((l-r)/2-ox)*s,(-b+t-oy)*s,s,idx);ctx.restore();return true;
+   }
+ }
  if(id==='nene-pixel'&&role==='girlfriend')pixelUI.abot(ctx,id,position,{scale:0.62,time,beat:game.beat,bpm,focusPlayer:game.eventFocus??game.chartPlayer});
  if(role==='girlfriend'){
    const pack=nativeExtras.packs.characters;
@@ -734,6 +822,8 @@ function drawExpandedStage(time,script=null){
     const shift=tankmanOffset&&authored?tankmanOffset.map((v,i)=>v+authored[i]):tankmanOffset||authored;
     const show=script?.showProps?.includes(prop.name)||prop.name==='rocket'&&choice.variant==='pico'&&scene!=='cutscene';
     const positioned=shift?{...prop,position:prop.position.map((v,i)=>v+shift[i])}:prop;
+    const blink=game.vamp?.blink;
+    if(blink?.name===prop.name&&time-blink.at<110)return {z:prop.zIndex,prop:{...positioned,startingAnimation:'blink'}};
     return {z:view.propZ?.[prop.name]??prop.zIndex??0,prop:show?{...positioned,alpha:1}:positioned};
   });
   for(const [role,key] of [['girlfriend','gf'],['opponent','dad'],['player','bf']]){
@@ -744,15 +834,18 @@ function drawExpandedStage(time,script=null){
     const id=stageCharacterId(role),swing=id==='scenecoresky-shootin'&&!settings.reducedMotion;
     const angle=swing?-Math.sin(time*.0025)*Math.PI/18:0;
     const side=swing?-67+Math.sin(time*.00252)*58:0;
-    const position=positions[role]=[pos[0]+(offset[0]+side)*scale,pos[1]+offset[1]*scale];
+    const lift=overrides?.lift||0;
+    const position=positions[role]=[pos[0]+(offset[0]+side)*scale,pos[1]+offset[1]*scale-lift];
     const config=nativeContent.character(id,role==='player');
     focusPoints[role]=actorCameraPoint(meta.position,meta,config,1);
+    if(lift)focusPoints[role][1]-=lift/scale;
     const cutActor=script?.actors?.find(entry=>entry.role===role&&entry.asset)||(role==='opponent'&&skyOutcome?{
       asset:skyOutcome.art,label:skyOutcome.naughtyness?'Dead':'Dead Candy',age:time,offset:[-190,-581],loop:true,
     }:null);
     if(cutActor)layers.push({z:(meta.zIndex||0)+1,cutActor,position});
+    const vampActor=script?.vampActors?.find(entry=>entry.role===role&&entry.art);
     layers.push({z:fight&&role===game.fightLead?3500:meta.zIndex||0,role,position,angle,
-      actorScale:overrides?.actorScale??scale*(meta.scale||1),globalOffsets:overrides?.globalOffsets});
+      actorScale:overrides?.actorScale??scale*(meta.scale||1),globalOffsets:overrides?.globalOffsets,vampActor});
   }
   const propActors=script?.props||(deadSniper?[{prop:'sniper',z:21,asset:deadSniper,label:'Sniper Dead Loop',age:time,offset:[-150,550],scale:1.15,loop:true}]:[]);
   for(const prop of propActors){
@@ -760,6 +853,7 @@ function drawExpandedStage(time,script=null){
     if(anchor&&prop.asset)layers.push({z:prop.z,cutActor:prop,position:project(anchor.position)});
   }
   layers.push(...skyPolish.stageLayers(game));
+  if(!intro&&!settings.reducedMotion)layers.push(...vampAtmosphere(game,time,nativeContent.data.vamp));
   if(choice.stage==='theShiftDarkErect')layers.push({z:50,angerBackdrop:true});
   if(!intro&&game.tankmanRunners?.length)layers.push({z:30,tankmanRunners:true});
   const resolve=([role,x,y,zoom])=>{
@@ -786,7 +880,8 @@ function drawExpandedStage(time,script=null){
   }
   const shotAge=time-(game.lastShot?.time??-Infinity);
   const scenecoreShake=!intro&&stageCharacterId('girlfriend')==='scenecoresky-shootin'&&shotAge>=0&&shotAge<100?.004:0;
-  const shake=settings.flashingLights===false||settings.reducedMotion?0:script?.shake||scenecoreShake;
+  const dropAge=time-(game.vamp?.drop?.at??-Infinity);
+  const shake=settings.flashingLights===false||settings.reducedMotion?0:script?.shake||scenecoreShake||(dropAge>=700&&dropAge<1200?.004:0);
   const bump=zoom/scale;
   const shakeX=shake?Math.sin(time*.131)*1280*shake:0,shakeY=shake?Math.cos(time*.177)*720*shake:0;
   const screenTransform=ctx.getTransform();
@@ -839,6 +934,13 @@ function drawExpandedStage(time,script=null){
       skyPolish.drawProp(ctx,game,layer.prop,()=>nativeContent.drawProp(ctx,layer.prop,game,parallax),parallax);
       ctx.restore();
       if(layer.prop.name==='spraycanPile')drawOfficialStageFX(ctx,assets,game,stage,view,{time,elapsed:script?.elapsed,cutsceneId:script?.cutsceneId,phase:'pile'});
+      continue;
+    }
+    if(layer.vampActor){
+      const {art,offset,at}=layer.vampActor;
+      const index=clamp(Math.floor((script.elapsed-at)*.024),0,art.frames-1);
+      const [x,y]=layer.position,[l,t,r,b]=art.bounds;
+      atlasFrame(art.name,art.prefix,x+((l-r)/2+offset[0])*scale,y+(-b+t+offset[1])*scale,scale,index);
       continue;
     }
     if(layer.role==='player')skyPolish.drawTutorial(ctx,game,time,layer.position,{stageScale:scale,reducedMotion:settings.reducedMotion});
@@ -896,7 +998,7 @@ function drawTankmanRunners(game,time,worldScale,project){
   }
 }
 
-async function prepareSceneAssets(choice){const week=SONGS[songIndex].week,modern=choice.variant==='erect'||choice.character==='pico'||choice.stage?.endsWith('Erect'),needed=new Set([...nativeContent.required(choice),...pixelUI.required(choice),pixelStage(choice)?'NATIVE_SPLASH_PIXEL':'NATIVE_SPLASH','combo']);if(choice.charts?.picospeaker)needed.add('NATIVE_TANKMAN_RUNNER');if(choice.noteTexture&&assets.atlases[choice.noteTexture])needed.add(choice.noteTexture);for(const name of [choice.character==='pico'?'PICO':'BOYFRIEND','BF_FEAR','DADDY_DEAREST','GF_FEAR'])needed.add(name);if((choice.character==='pico'||['nene-tankmen','otis-speaker'].includes(choice.characters?.girlfriend))&&!pixelStage(choice))for(const name of ['ABOT','ABOT_SCREEN','ABOT_VIZ'])needed.add(name);if(week===2||choice.stage?.startsWith('spooky')){if(modern)needed.add('GF_DARK');for(const name of modern?['SPOOKY_DARK','MONSTER','week2-bgDark','week2-bgLight','week2-stairsDark','week2-stairsLight','WEEK2_TREES']:['SPOOKY','MONSTER','HALLOWEEN'])needed.add(name);}else if(!nativeContent.stage(choice)&&!modern)for(const name of ['stageback','stagefront','stagecurtains'])needed.add(name);for(const name of ['GF_EXTENDED','NENE_EXTENDED'])needed.delete(name);if(choice.character!=='pico')needed.delete('PICO');assets.releaseUnused(needed);await Promise.all([assets.ensure([...needed]),skyPolish.prepare(choice,audio),skyDetails.prepare(choice,audio),nativeContent.prepare(choice),comboFeedback.prepare(),...officialRequiredSounds(choice).map(name=>audio.load(''+name+'.ogg').catch(()=>null)),nativeExtras.load('characters'),modern&&week!==2&&!nativeContent.stage(choice)?nativeExtras.load('erectStage'):Promise.resolve()]);if(pixelStage(choice))await Promise.all([...pixelUI.sounds(),...(Object.values(nativeContent.data.uiPixelGameover||{}).map(v=>v.lossSound.split('/').at(-1).replace(/\.ogg$/,'')))].map(name=>audio.load(''+name+'.ogg').catch(()=>null)));if(choice.stage?.startsWith('philly')||choice.stage?.startsWith('limo'))await Promise.all(['train_passes','carPass0','carPass1'].map(name=>audio.load(''+name+'.ogg').catch(()=>null)));}
+async function prepareSceneAssets(choice,cutscenes=false){const week=SONGS[songIndex].week,modern=choice.variant==='erect'||choice.character==='pico'||choice.stage?.endsWith('Erect'),needed=new Set([...nativeContent.required(choice),...pixelUI.required(choice),pixelStage(choice)?'NATIVE_SPLASH_PIXEL':'NATIVE_SPLASH','combo']);if(choice.charts?.picospeaker)needed.add('NATIVE_TANKMAN_RUNNER');if(choice.noteTexture&&assets.atlases[choice.noteTexture])needed.add(choice.noteTexture);for(const name of [choice.character==='pico'?'PICO':'BOYFRIEND','BF_FEAR','DADDY_DEAREST','GF_FEAR'])needed.add(name);if((choice.character==='pico'||['nene-tankmen','otis-speaker'].includes(choice.characters?.girlfriend))&&!pixelStage(choice))for(const name of ['ABOT','ABOT_SCREEN','ABOT_VIZ'])needed.add(name);if(week===2||choice.stage?.startsWith('spooky')){if(modern)needed.add('GF_DARK');for(const name of modern?['SPOOKY_DARK','MONSTER','week2-bgDark','week2-bgLight','week2-stairsDark','week2-stairsLight','WEEK2_TREES']:['SPOOKY','MONSTER','HALLOWEEN'])needed.add(name);}else if(!nativeContent.stage(choice)&&!modern)for(const name of ['stageback','stagefront','stagecurtains'])needed.add(name);for(const name of ['GF_EXTENDED','NENE_EXTENDED'])needed.delete(name);if(choice.character!=='pico')needed.delete('PICO');if(isVamp(choice)){const art=nativeContent.data.vamp;for(const id of [art.bat,art.snow,art.stalactite,art.strum,art.note,art.splash,art.blood1,art.blood2,art.blood3,art.blood4,...Object.entries(art.cutscenes).filter(([name])=>name.startsWith(choice.characters.player.replaceAll('-','_')+'_')||cutscenes&&choice.variant==='classic'&&(choice.baseSong==='vamp'?name==='intro':choice.baseSong==='vivacious'&&['bf','gf','vamp'].includes(name))).map(([,clip])=>clip.name),...(choice.baseSong==='vamp'?[]:[nativeContent.character(choice.variant==='pico'?'vamp-death-pico':'vamp-death-bf').atlasName]),...art['vamp-stickers'],...art['vamp-stickers-pico']])needed.add(id);}assets.releaseUnused(needed);await Promise.all([assets.ensure([...needed]),skyPolish.prepare(choice,audio),skyDetails.prepare(choice,audio),nativeContent.prepare(choice),comboFeedback.prepare(),...officialRequiredSounds(choice).map(name=>audio.load(''+name+'.ogg').catch(()=>null)),nativeExtras.load('characters'),modern&&week!==2&&!nativeContent.stage(choice)?nativeExtras.load('erectStage'):Promise.resolve()]);if(pixelStage(choice))await Promise.all([...pixelUI.sounds(),...(Object.values(nativeContent.data.uiPixelGameover||{}).map(v=>v.lossSound.split('/').at(-1).replace(/\.ogg$/,'')))].map(name=>audio.load(''+name+'.ogg').catch(()=>null)));if(choice.stage?.startsWith('philly')||choice.stage?.startsWith('limo'))await Promise.all(['train_passes','carPass0','carPass1'].map(name=>audio.load(''+name+'.ogg').catch(()=>null)));}
 function drawStage(time,script=null){if(nativeContent.stage(game.choice))return drawExpandedStage(time,script);
  const week2=SONGS[songIndex].week===2,modern=game.choice.variant==='erect'||game.character==='pico'||game.choice.stage?.endsWith('Erect'),custom=game.modVisuals,beat=game.beat,bpm=bpmAt(game.chart,time),flashAge=time-game.lightningAt;
  const positions=week2?(modern?{dad:[316,614],bf:[967,629],gf:[646,565]}:{dad:[346,637],bf:[831,653],gf:[641,575]}):modern?{dad:[270,629],bf:[973,644],gf:[616,576]}:{dad:[324,609],bf:[1043,639],gf:[688,553]};
@@ -971,6 +1073,12 @@ function drawSongFeedback(time,stage){
 function drawGameplay(){
  if(!game)return;const time=game.time,mobile=mobileActive(),down=mobile||settings.downscroll,count=laneCount(),y=receptorY(),sign=down?-1:1,speed=0.45*game.chart.speed*settings.scrollSpeed,playerScale=mobile?(count===6?.52:.58):count===6?0.55:0.7;
  const placement=drawStage(time,skyDetails.mobileView(game,time,settings.reducedMotion||settings.cameraZooms===false));if(/^philly(?:Streets|Blazin)/.test(game.choice.stage||'')&&!settings.reducedMotion)drawExpandedRain(ctx,Math.max(0,time),game.choice.baseSong==='blazin'?1.15:.8);
+ const vampIntro=game.vamp?.video;
+ if(vampIntro&&vampIntro.readyState>=2&&time>=0&&game.beat<32){
+   ctx.drawImage(vampIntro,0,0,1280,720);
+   newButton('pause','Pause game',1180,0,100,88,pauseGame);
+   return;
+ }
  skyDetails.drawForeground(ctx,game,time,settings.reducedMotion||settings.flashingLights===false);
  if(game.skyTutorialMuted)return;
  drawSongFeedback(time,placement);
@@ -997,6 +1105,36 @@ function drawGameplay(){
   for(let lane=0;lane<count;lane++){const until=(player?laneFlashes:opponentFlashes)[lane],confirm=until>frameTime,press=player&&laneHeld(lane);drawNote(lane,laneX(lane,player),mobile&&!player?20:y,mobile&&!player?0.22:playerScale,confirm?'confirm':press?'press':'static',confirm?145-(until-frameTime):0,player?1:0.7);}
   for(let i=game.scanIndex;i<game.notes.length;i++){const n=game.notes[i];if(n.time>time+6000)break;if(n.player!==player||n.hit||n.missed)continue;const pos=notePosition(n);if(pos<-180||pos>850)continue;drawNote(n.lane,laneX(n.lane,player),pos,mobile&&!player?0.22:playerScale,'note',0,player?1:0.7);}
   ctx.restore();}
+ if(game.vamp?.notes.length){
+   const art=nativeContent.data.vamp,cx=(laneX(count/2-1,true)+laneX(count/2,true))/2+56,cy=y+56;
+   const state=game.vamp,confirm=Math.max(0,145-(time-(state.confirm??-Infinity))),s=.65*(mobile?.76:1);
+   const drawCenter=(name,frame,px,py,scale)=>{
+     if(frame)assets.draw(ctx,name,frame,px-(frame.frameWidth||frame.width)*scale/2,py-(frame.frameHeight||frame.height)*scale/2,scale);
+   };
+   drawCenter(art.strum,assets.frame(art.strum,confirm?'confirm':'strum',confirm?Math.floor((145-confirm)*.024):0),cx,cy,s);
+   const note=assets.images[art.note];
+   if(note){
+     const width=note.width*s,height=note.height*s;
+     for(let i=state.index;i<state.notes.length;i++){
+       const n=state.notes[i],py=cy+(n.time-time)*speed*(game.eventScrollPlayer??game.eventScroll??1)*sign;
+       if((down&&py<-height)||(!down&&py>720+height))break;
+       if(!n.done&&py>=-height&&py<720+height)image(art.note,cx-width/2,py-height/2,width,height);
+     }
+   }
+   if(!settings.reducedMotion&&settings.noteSplash!==false&&time-state.splash<210)
+     drawCenter(art.splash,assets.frame(art.splash,'',Math.floor((time-state.splash)*.024)),cx,cy,s);
+   text(mobile?'TAP':keyLabel(settings.vampKey),cx,cy+(down?39:-55),mobile?15:17,'#ffb2ba','center',2);
+   if(mobile)newButton('vamp-middle','Tap the VS. Vamp middle note',cx-47,cy-54,94,112,
+     ev=>hitVampMiddle(audio.chartTime(ev?.timeStamp),true),{tapOnDown:true,exclusive:true});
+   const bloodAge=time-state.bloodAt;
+   if(settings.flashingLights!==false&&bloodAge>=0&&bloodAge<5000){
+     const fade=1-bloodAge/5000;
+     for(let i=1;i<=Math.min(4,state.bloodPhase+1);i++){
+       const img=assets.images[art['blood'+i]];
+       if(img)image(art['blood'+i],i%2?0:1280-img.width*.65,i<=2?0:720-img.height*.65,img.width*.65,img.height*.65,fade*.7);
+     }
+   }
+ }
  const splashAtlas=pixelStage(game.choice)?'NATIVE_SPLASH_PIXEL':'NATIVE_SPLASH';
  game.splashes=game.splashes.filter(splash=>{
    const color=['purple','blue','green','red'][laneDirection(splash.lane)];
@@ -1093,6 +1231,7 @@ function runInput(code,device,event=null){
   if(matches('debugDisplay')){
     stop();const values=['Off','Simple','Advanced'];settings.debugDisplay=values[(values.indexOf(settings.debugDisplay)+1)%values.length];saveSettings();return;
   }
+  if(scene==='play'&&game?.vamp?.notes.length&&isKey&&code===settings.vampKey){stop();hitVampMiddle(audio.chartTime(event?.timeStamp),true);return;}
   const lane=scene==='play'?noteLaneFor(settings,code,laneCount(),device):-1;
   if(lane>=0){stop();held.add(isKey?code:'pad'+lane);pressLane(lane,event?.timeStamp);return;}
   if(matches('volumeMute')){stop();settings.volume=settings.volume?0:.7;saveSettings();return;}

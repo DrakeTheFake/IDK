@@ -5,7 +5,7 @@ const EXPANDED_NOTE_POSES={ugh:'ugh',hehprettygood:'hehPrettyGood',skyughnote:'u
 const FIGHT_POSES={block:'block',dodge:'dodge',hithigh:'hitHigh',hitlow:'hitLow',hitspin:'hitSpin',
   idle:'idle',taunt:'taunt',fakeout:'fakeout',reversefakeout:'fakeout',tauntforce:'taunt'};
 
-export function expandedNote(game,note,time,actors,playSound,miss=false){
+export function expandedNote(game,note,time,actors,playSound,miss=false,animationDuration=()=>0){
   const side=note.player?'player':'opponent',rival=note.player?'opponent':'player';
   const kind=String(note.kind||'').toLowerCase(),special=kind.replace(/^weekend-1-/,'');
   const force=(role,name,length=430)=>{
@@ -42,7 +42,17 @@ export function expandedNote(game,note,time,actors,playSound,miss=false){
     return;
   }
   if(applyOfficialCanNote(game,special,time,actors,playSound,miss))return;
-  if(!miss)force(side,EXPANDED_NOTE_POSES[special],kind==='hehprettygood'?930:410);
+  if(miss)return;
+  if(special==='hehprettygood'||special==='vampheynote'){
+    const name=special==='hehprettygood'?'hehPrettyGood':'hey';
+    const length=animationDuration(side,name);
+    if(length>0&&!(actors[side].forced?.name===name&&time<actors[side].forced.until)){
+      const since=note.player?time:note.time;
+      actors[side].forced={name,since,until:since+length,lock:true};
+    }
+    return;
+  }
+  force(side,EXPANDED_NOTE_POSES[special],410);
 }
 
 export function drawExpandedRain(ctx,time,intensity=1){
