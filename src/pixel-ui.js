@@ -17,9 +17,16 @@ export class PixelUI {
   }
   hold(ctx,lane,x,start,end,alpha,scale,aspect=1){
     const def=this.style().holdNote,img=this.assets.images[def?.assetId];if(!img)return false;
-    const sx=lane*img.width/4,sw=img.width/4,sh=img.height/2,size=(def.scale||6)*scale/.7,w=sw*size,length=Math.abs(end-start),cap=Math.min(length,sh*size*aspect);
+    // The eight columns alternate between a lane's body and its end cap.
+    const sw=img.width/8,sx=lane*sw*2,sh=img.height,size=(def.scale||6)*scale/.7;
+    const w=sw*size,length=Math.abs(end-start),capHeight=sh*size*aspect,cap=Math.min(length,capHeight);
     ctx.save();ctx.imageSmoothingEnabled=false;ctx.globalAlpha*=alpha;ctx.translate(x,start);ctx.scale(1,end>=start?1:-1);
-    if(length>cap)ctx.drawImage(img,sx,0,sw,sh,-w/2,0,w,length-cap);ctx.drawImage(img,sx,sh,sw,sh,-w/2,length-cap,w,cap);ctx.restore();return true;
+    if(length>cap)ctx.drawImage(img,sx,0,sw,1,-w/2,0,w,length-cap);
+    if(cap>0){
+      const crop=sh*cap/capHeight;
+      ctx.drawImage(img,sx+sw,sh-crop,sw,crop,-w/2,length-cap,w,cap);
+    }
+    ctx.restore();return true;
   }
   countdownSound(beat){return this.style()[{[-4]:'countdownThree',[-3]:'countdownTwo',[-2]:'countdownOne',[-1]:'countdownGo'}[beat]]?.audioFile?.split('/').at(-1)?.replace(/\.ogg$/,'');}
   countdown(ctx,beat){const def=this.style()[{[-3]:'countdownTwo',[-2]:'countdownOne',[-1]:'countdownGo'}[beat]],img=this.assets.images[def?.assetId];if(!img)return false;const s=def.scale||6;ctx.save();ctx.imageSmoothingEnabled=false;this.assets.image(ctx,def.assetId,(1280-img.width*s)/2,(720-img.height*s)/2,img.width*s,img.height*s);ctx.restore();return true;}

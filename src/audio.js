@@ -1,3 +1,4 @@
+import {audioClockTime,songClockTime} from './audio-timing.js';
 import {STICKER_SOUNDS} from './transitions.js';
 
 export class AudioEngine {
@@ -83,7 +84,10 @@ export class AudioEngine {
     this.stemGains=[];
     this.sources=this.buffers.map((buffer,i)=>{const s=this.ctx.createBufferSource();s.buffer=buffer;s.playbackRate.value=this.songRate;const level=this.ctx.createGain();level.gain.value=this.mutedRoles?.has(this.trackRoles[i])?0:1;s.connect(level);level.connect(i===0||this.trackRoles[i]==='opponent'&&this.allowVoices?this.music:this.voices);this.stemGains.push(level);const trackOffset=(this.trackOffsets[i]||0)/1000,relative=position/1000-trackOffset,delay=Math.max(0,-relative),offset=Math.max(0,relative);if(offset<buffer.duration)s.start(this.ctx.currentTime+delay/this.songRate,offset);return s;});
   }
-  time(){return this.running?this.position+(this.ctx.currentTime-this.clockStart)*1000*this.songRate:this.position;}
+  time(eventAt){
+    return this.running?this.position+(audioClockTime(this.ctx,eventAt)-this.clockStart)*1000*this.songRate:this.position;
+  }
+  chartTime(eventAt){return songClockTime(this.time(eventAt),this.settings.offset||0,this.songRate);}
   pause(){if(!this.running)return;this.position=this.time();this.running=false;this.stopSources();}
   resume(){this.start(this.position);}
   stopSources(){for(const s of this.sources){try{s.stop();}catch{}s.disconnect();}this.sources=[];for(const gain of this.stemGains)gain.disconnect();this.stemGains=[];}

@@ -12,6 +12,11 @@ export function chartForSixKeys(chart){
 }
 export function partnerDanceFrame(beat,bpm,{halfLength=15,fps=24,period=1}={}){const counter=Math.floor(Math.max(0,beat)/period),elapsed=((beat%period+period)%period)*60000/bpm;return (counter%2)*halfLength+Math.min(halfLength-1,Math.floor(elapsed*fps/1000));}
 export function nativeFacing(flipX,player=false){return player?!Boolean(flipX):Boolean(flipX);}
+export function mobileLaneRegion(count){
+  const width=count===6?816:608;
+  return {left:(1280-width)/2,width,stride:width/count};
+}
+
 export function laneAtPoint(x,left,width,count){return Math.max(0,Math.min(count-1,Math.floor((x-left)/Math.max(1,width)*count)));}
 
 export function holdProgress(chart,note,time,held){

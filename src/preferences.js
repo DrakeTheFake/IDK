@@ -1,3 +1,4 @@
+import {CALIBRATION_BEAT as BEAT,CalibrationAudio,medianDelay} from './audio-timing.js';
 const MEDIA = 'assets/preferences/';
 const WIDTH = 1280;
 const HEIGHT = 720;
@@ -304,52 +305,14 @@ function textLines(ctx, sentence, width, size) {
   return lines;
 }
 
-const BEAT = 600;
-class LagAudio {
-  constructor(settings) { this.settings = settings; this.started = 0; }
-  start() {
-    this.stop();
-    this.started = performance.now();
-    this.loopOffset = 0;
-    this.previous = 0;
-    this.track = new Audio(MEDIA + 'offsetsLoop.ogg');
-    this.drums = new Audio(MEDIA + 'drumsLoop.ogg');
-    for (const audio of [this.track, this.drums]) { audio.loop = true; audio.preload = 'auto'; }
-    this.volume(false);
-    this.track.play().catch(() => {});
-  }
-  beatDrums(enabled) {
-    if (!this.track) return;
-    this.volume(enabled);
-    if (enabled && this.drums.paused) {
-      this.drums.currentTime = this.track.currentTime;
-      this.drums.play().catch(() => {});
-    } else if (!enabled) this.drums.pause();
-  }
-  volume(drums) {
-    if (!this.track) return;
-    this.track.volume = (this.settings.volume ?? .7) * .8;
-    this.drums.volume = drums ? (this.settings.volume ?? .7) * .9 : 0;
-  }
-  time() {
-    const track = this.track;
-    if (!track || track.paused) return Math.max(0, performance.now() - this.started);
-    const position = track.currentTime * 1000;
-    if (position + BEAT < this.previous && Number.isFinite(track.duration)) this.loopOffset += track.duration * 1000;
-    this.previous = position;
-    return this.loopOffset + position;
-  }
-  stop() { this.track?.pause(); this.drums?.pause(); this.track = null; this.drums = null; }
-}
-
 export class PreferencesMenu {
-  constructor({settings, assets, save = () => {}, onExit = () => {}, announce = () => {}, sfx = () => {},
+  constructor({settings, assets, audio, save = () => {}, onExit = () => {}, announce = () => {}, sfx = () => {},
     exportSave, importSave, clearSave, resetSettings, onLagChange = () => {}, capabilities = {}}) {
     Object.assign(this, {settings, assets, save, onExit, announce, sfx, exportSave, importSave, clearSave, resetSettings, onLagChange});
     this.capabilities = {screenshots: true, rewiredHazards: true, ...capabilities};
     this.images = {};
     this.atlases = {};
-    this.lagAudio = new LagAudio(settings);
+    this.lagAudio = new CalibrationAudio(audio, MEDIA);
     this.active = false;
     this.checkboxAt = new Map();
     this.lastPointer = null;
@@ -365,11 +328,11 @@ export class PreferencesMenu {
     return this.loading;
   }
 
-  open({paused = false} = {}) {
+  open({paused = false, page = 'root'} = {}) {
     this.active = true;
     this.paused = paused;
-    this.page = 'root';
-    this.selected = this.rootSelection || 0;
+    this.page = this.entryPage = page;
+    this.selected = page === 'root' ? this.rootSelection || 0 : 0;
     this.scroll = 0;
     this.prompt = null;
     this.rebind = null;
@@ -392,7 +355,7 @@ export class PreferencesMenu {
     this.scroll = 0;
     this.prompt = null;
     if (page === 'controls') { this.device = 'keyboard'; this.column = 0; this.deviceTabs = true; }
-    if (page === 'lag') { this.onLagChange(true, this.paused); this.lagAudio.start(); }
+    if (page === 'lag') { this.onLagChange(true, this.paused); this.lagAudio.start().catch(() => this.announce('Could not load the calibration music.')); }
     this.sfx('confirmMenu', .55);
   }
 
@@ -400,7 +363,7 @@ export class PreferencesMenu {
     if (this.prompt || this.rebind) { this.prompt = null; this.rebind = null; this.sfx('cancelMenu', .55); return; }
     if (this.lagMode) { this.finishLag(false); return; }
     if (this.page === 'controls' && !this.deviceTabs) { this.deviceTabs = true; this.scroll = 0; return; }
-    if (this.page === 'root') {
+    if (this.page === this.entryPage) {
       this.close();
       this.onExit(this.paused);
     } else {
@@ -411,7 +374,7 @@ export class PreferencesMenu {
   }
 
   rows() {
-    if (this.page === 'root') return [...(this.paused?ROOT_PAGES:[...ROOT_PAGES,['modifiers','Modifiers']]).map(([page, label]) => action(label, () => this.openPage(page))), action('Exit', () => this.back())];
+    if (this.page === 'root') return [...[...ROOT_PAGES,['modifiers','Modifiers']].map(([page, label]) => action(label, () => this.openPage(page))), action('Exit', () => this.back())];
     if (this.page === 'preferences') return PREFERENCES.filter(row => (!row.capability || this.capabilities[row.capability]) && (!this.paused || !['keyMode','practice','botplay'].includes(row.key)));
     if (this.page === 'modifiers') return [
       number('songRate','Song Speed','Changes audio and chart speed together.',.5,2,.05,percent),
@@ -425,7 +388,7 @@ export class PreferencesMenu {
     if (this.page === 'rewired') return [...REWIRED.filter(row => this.capabilities[row.capability]), action('Exit', () => this.back())];
     if (this.page === 'sky') return [flag('skyDisableMenus', 'Disable Menus', 'Revert the title and main menu to the original game style.'),
       choices('skySecretChance', 'Secret Chances', 'Use the original odds, guarantee the secret outcomes, or disable them.', SECRET_CHANCES), action('Exit', () => this.back())];
-    if (this.page === 'lag') return [number('offset','Offset (Global)','Adjust the timing offset in milliseconds.',-1500,1500,1), action('Reset Offset',() => this.change('offset',0)), action('Offset Calibration',() => this.beginLag('calibrate')), action('Test',() => this.beginLag('test'))];
+    if (this.page === 'lag') return [number('offset','Offset (Global)','Positive values delay notes to match delayed audio.',-1500,1500,1), action('Reset Offset',() => this.change('offset',0)), action('Offset Calibration',() => this.beginLag('calibrate')), action('Auto Estimate',() => this.autoLag()), action('Test',() => this.beginLag('test'))];
     if (this.page === 'save') return [
       ...(this.exportSave ? [action('Export Save Data', () => this.exportSave())] : []),
       ...(this.importSave ? [action('Import Save Data', () => this.confirmPrompt('Replace this browser’s save data with a backup?', 'Import', () => this.importSave()))] : []),
@@ -517,7 +480,18 @@ export class PreferencesMenu {
     this.announce(value == null ? 'Binding removed.' : `${inputLabel(value, device)} assigned.`);
   }
 
+  autoLag() {
+    const value = this.lagAudio.autoEstimate();
+    if (value === null) {
+      this.announce('Audio latency is unavailable. Use tap calibration.');
+      return;
+    }
+    this.change('offset', value);
+    this.announce(`Estimated audio delay: ${value} ms. Use Test to fine-tune it.`);
+  }
+
   beginLag(mode) {
+    if (!this.lagAudio.ready) { this.announce('Calibration music is loading.'); return; }
     this.lagMode = mode;
     this.lagStart = Math.floor(this.lagAudio.time() / BEAT) * BEAT + 4 * BEAT;
     this.lagSamples = [];
@@ -527,8 +501,8 @@ export class PreferencesMenu {
     this.announce(mode === 'calibrate' ? 'Press any key to the beat. Enter saves the estimate.' : 'Hit the notes as they arrive. Escape returns.');
   }
 
-  tapLag(input, device) {
-    const time = this.lagAudio.time() - this.lagStart - (this.lagMode === 'test' ? this.settings.offset : 0);
+  tapLag(input, device, eventAt) {
+    const time = this.lagAudio.time(eventAt) - this.lagStart - (this.lagMode === 'test' ? this.settings.offset : 0);
     const beat = Math.round(time / BEAT);
     const error = time - beat * BEAT;
     if (beat < 0 || beat === this.lastTapBeat || Math.abs(error) > 280) return;
@@ -536,14 +510,17 @@ export class PreferencesMenu {
     this.lastTapBeat = beat;
     this.lastTapAt = performance.now();
     this.lagSamples.push(error);
+    if (this.lagSamples.length > 32) this.lagSamples.shift();
   }
 
-  averageLag() { return this.lagSamples.length ? Math.round(this.lagSamples.reduce((sum, value) => sum + value, 0) / this.lagSamples.length) : 0; }
+  averageLag() { return medianDelay(this.lagSamples); }
 
   finishLag(apply) {
     if (apply && this.lagMode === 'calibrate') {
       if (this.lagSamples.length < 4) { this.announce('Tap at least four beats first.'); return; }
-      this.change('offset', this.averageLag());
+      const value = this.averageLag();
+      this.change('offset', value);
+      this.announce(`Calibration saved at ${value} ms.`);
     }
     this.lagMode = null;
     this.lagAudio.beatDrums(false);
@@ -553,12 +530,12 @@ export class PreferencesMenu {
   keydown(event) {
     if (!this.active) return false;
     event.preventDefault?.();
-    return this.input(event.code, 'keyboard', event.repeat);
+    return this.input(event.code, 'keyboard', event.repeat, event.timeStamp);
   }
 
   gamepad(button, pressed) { return this.active && pressed ? this.input(button, 'gamepad') : this.active; }
 
-  input(code, device, repeat = false) {
+  input(code, device, repeat = false, eventAt) {
     const matches = control => bindingFor(this.settings, control, code, device);
     const keyboard = device === 'keyboard';
     // These escape routes stay available during an incomplete control change.
@@ -584,7 +561,7 @@ export class PreferencesMenu {
     if (this.lagMode) {
       if (back) this.finishLag(false);
       else if (confirm && this.lagMode === 'calibrate' && (keyboard && code === 'Enter' || !keyboard && this.lagSamples.length >= 4)) this.finishLag(true);
-      else if (!repeat) this.tapLag(code, device);
+      else if (!repeat) this.tapLag(code, device, eventAt);
       return true;
     }
     if (back) { this.back(); return true; }
@@ -699,15 +676,6 @@ export class PreferencesMenu {
       }
     });
     if (!centered) this.description(ctx, rows[this.selected]?.description);
-    if (this.page === 'modifiers') return [
-      number('songRate','Song Speed','Changes audio and chart speed together.',.5,2,.05,percent),
-      number('healthDrain','Health Drain','Health lost per second while the song plays.',0,.1,.005,percent),
-      number('missDamage','Miss Damage','Multiplier for health lost on a miss.',.25,3,.25,percent),
-      flag('instantFail','Instakill','Any missed note or hold ends the run.'),
-      flag('mirrorNotes','Mirror Notes','Reverses the note lanes on both sides.'),
-      flag('noFail','No Fail','Keep playing at zero health.'),
-      action('Reset Modifiers',()=>{for(const key of ['songRate','healthDrain','missDamage','instantFail','mirrorNotes','noFail'])this.change(key,PREFERENCE_DEFAULTS[key]);}),
-    ];
     if (this.page === 'rewired') type(ctx, 'QT: Rewired v2.1.0', 10, 690, 16, {align: 'left', outline: 1});
   }
 
@@ -774,11 +742,11 @@ export class PreferencesMenu {
     const sample = this.lagSamples.length;
     type(ctx, time < 0 ? `Starting in ${Math.ceil(-time / BEAT)}` : `Current ${testing ? 'Timing' : 'Offset'}: ${this.averageLag()}ms`, 640, 598);
     type(ctx, `${sample} hits${testing ? '   •   ESC: Back' : '   •   Enter: Apply   •   ESC: Cancel'}`, 640, 654, 20);
-    if (!testing) this.target('tap', 'Tap to the beat', 210, 155, 860, 400, () => this.tapLag('Space', 'keyboard'));
+    if (!testing) this.target('tap', 'Tap to the beat', 210, 155, 860, 400, event => this.tapLag('Space', 'keyboard', event?.timeStamp));
     else for (let lane = 0; lane < 4; lane++) {
-      this.target(`test-${lane}`, `${STICK_LABELS[lane]} test note`, laneX(lane) - 54, hitY - 64, 108, 128, () => {
+      this.target(`test-${lane}`, `${STICK_LABELS[lane]} test note`, laneX(lane) - 54, hitY - 64, 108, 128, event => {
         const input = this.settings.bindings.keyboard[NOTES[lane]].find(Boolean);
-        this.tapLag(input, 'keyboard');
+        this.tapLag(input, 'keyboard', event?.timeStamp);
       });
     }
     this.target('lag-return', 'Exit lag adjustment', 0, 652, 225, 68, () => this.finishLag(false));
