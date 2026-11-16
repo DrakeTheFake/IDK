@@ -1,5 +1,13 @@
 export const PATCH_NOTES = [
   {
+    title:'Sky Reborn secrets and gameplay',
+    sections:[
+      ['Sky Reborn','Stress Sky Mix continues into gameplay. The Pico Shot secret uses the requested 1 in 10,000 odds. Manifest uses separate vocal controls through its water and boiling branches. Sky Mobile has its original outro.'],
+      ['Freeplay','The selected difficulty filters the song list. Choose Modifiers under Options to change speed, health drain, miss damage, Instakill, Mirror Notes, or No Fail.'],
+      ['Gameplay','Native note splashes, HUD beat pulses, song credits and original sticker art accompany play. The Erect Week 2 cast lights up with lightning and fades back into shadow.'],
+    ],
+  },
+  {
     title:'Stage and gameplay fixes',
     sections:[
       ['Weekend 1 and Week 7','Weekend 1 has revised character and speaker placement. The spray can follows the lighting, kick and gun animations. Pico uses full-resolution sprites in the alley, and Nene plays her full laugh. Tankman rises and settles back down during Guns. Stress Pico Mix has revised stage framing.'],

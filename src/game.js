@@ -6,6 +6,7 @@ import {ExpandedCutscenes,expandedIntro,expandedOutro,expandedStageIntro,expande
 import {SkyGallery,expandedImage,expandedJSON,loadExpandedAnimation} from './sky-ui.js';
 import {expandedNote,drawExpandedRain} from './expanded-gameplay.js';
 import {PATCH_NOTES} from './patch-notes.js';
+import {SkyDetails} from './sky-details.js';
 import {SkyPolish,drawSkyAnimation} from './sky-polish.js';
 import {actorCameraPoint,nativeChartCamera} from './stage-camera.js';
 import {officialStageLayout,officialPartnerAnchor,drawOfficialStageFX,officialRequiredSounds,canFire,isOfficialCanNote} from './official-polish.js';
@@ -38,7 +39,7 @@ if(!storage.get('settings',null)&&matchMedia('(prefers-reduced-motion: reduce)')
 const assets=new Assets(),audio=new AudioEngine(settings),chartCache=new Map(),comboFeedback=new ComboFeedback(settings,audio);
 let chartEditor=null;
 const nativeContent=new NativeContent(assets,audio),nativeExtras=new NativeExtras(),nativeResults=new NativeResults();
-const storyIntros=new StoryIntros(),skyPolish=new SkyPolish();let introWaiter=null,introAnnouncement='';
+const storyIntros=new StoryIntros(),skyPolish=new SkyPolish(),skyDetails=new SkyDetails();let introWaiter=null,introAnnouncement='';
 const pixelUI=new PixelUI(assets,audio,()=>nativeContent.data);
 const modernFreeplay=new ModernFreeplay(),characterSelect=new CharacterSelect(),sceneTransitions=new SceneTransitions(),modLibrary=new ModLibrary();
 installNativeEditor(ChartEditor,{loadRaw:(index,diff)=>rawChoice(songChoice(index,diff)),onDifficulty:value=>difficulty=value,characterChoices:()=>['bf','pico-playable','dad','gf','spooky','monster','pico','mom-car','bf-car','gf-car',...Object.keys(nativeContent.data.characterIds||{}),...modLibrary.records.flatMap(r=>r.items.flatMap(i=>Object.values(i.metadata.playData?.characters||{}).filter(v=>typeof v==='string')))],stageChoices:()=>['mainStage','mainStageErect','spookyMansion','spookyMansionErect','phillyTrain','phillyTrainErect','limoRide','limoRideErect',...Object.keys(nativeContent.data.stages),...modLibrary.songs().map(s=>s.stage)]});
@@ -59,11 +60,13 @@ async function loadExpandedMenu(){
 }
 async function loadSkySelection(){
   if(!skySelectLoad)skySelectLoad=(async()=>{
-    const [chill,name]=await Promise.all([loadExpandedAnimation(skyMenu.charSelect.chill),expandedImage(skyMenu.charSelect.nameTag),assets.ensure(['HEALTH_SKY-PLAYABLE'])]);
+    const [chill,name]=await Promise.all([loadExpandedAnimation(skyMenu.charSelect.chill),expandedImage(skyMenu.charSelect.nameTag)]);
     characterSelect.animations.skyChill=chill.timeline;
     characterSelect.images.skyChill=chill.image;
     characterSelect.images.skyName=name;
-    characterSelect.images.skyIcon=assets.images['HEALTH_SKY-PLAYABLE'];
+    const portrait=document.createElement('canvas');portrait.width=portrait.height=256;
+    drawSkyAnimation(portrait.getContext('2d'),chill,290,-39,8,{label:'idle'});
+    characterSelect.images.skyIcon=portrait;
   })().catch(error=>{skySelectLoad=null;throw error;});
   return skySelectLoad;
 }
@@ -104,7 +107,10 @@ async function runExpandedSequence(id){
   enter('cutscene');announce('Cutscene. Press Enter or Escape to skip.');
   const completed=await result;
   if(!completed||generation!==loadGeneration||current!==game)return false;
-  if(id==='sky-pico-stage'&&completed.alternate&&completed.art.sky)game.skyPicoOutcome={art:completed.art.sky,naughtyness:completed.naughtyness};
+  if(id==='sky-pico-stage'&&completed.alternate&&completed.art.sky){
+    game.skyPicoOutcome={art:completed.art.sky,naughtyness:completed.naughtyness};
+    audio.muteRole('opponent',true);
+  }
   if(id==='stress-sky-stage'&&completed.art.sniper)game.stressSniper=completed.art.sniper;
   return true;
 }
@@ -163,7 +169,10 @@ function toggleKeyMode(){settings.keyMode=settings.keyMode===6?4:6;saveSettings(
 function songChoice(index=songIndex,diff=difficulty,character=fp.character,instrumental=fp.instrumental){
  const song=SONGS[index],level=DIFFICULTIES[diff]?.toLowerCase()||'normal';if(song.mod)return modLibrary.choice(song,level,instrumental);
  const expanded=expandedContent.choice(song.id,character,level,instrumental);
- if(expanded&&(song.source||expandedContent.levels(song.id,character).length))return expanded;
+ if(expanded&&(song.source||expandedContent.levels(song.id,character).length)){
+   if(expanded.baseSong==='wife-forever'&&expanded.variant==='erect')return {...expanded,characters:{...expanded.characters,opponent:'sky-pajamas'}};
+   return expanded;
+ }
  const kind=character==='pico'?'pico':diff>=3?'erect':null,variant=variantCatalog.find(v=>v.baseSong===song.id&&v.variant===kind),base=baseSongCatalog.find(v=>v.id===song.id),common={opponent:song.opponent||'dad',stage:song.stage||'mainStage',week:song.week??1,noteStyle:base?.playData?.noteStyle,characters:base?.characters||{player:'bf',opponent:song.opponent||'dad',girlfriend:'gf'}};
  if(variant&&variant.charts[level])return {...common,...variant,character,level,chartUrl:''+variant.charts[level],rawData:variant.chartData?.[level],audioUrls:[''+variant.instrumental,''+variant.voices]};
  const suffix=['-easy','','-hard'][Math.min(diff,2)],alternate=instrumental==='pico'?variantCatalog.find(v=>v.baseSong===song.id&&v.variant==='pico'):null;
@@ -265,14 +274,27 @@ function syncButtons(){
     if(el.getAttribute('aria-label')!==b.label)el.setAttribute('aria-label',b.label);const layout=`left:${b.x/12.8}%;top:${b.y/7.2}%;width:${b.w/12.8}%;height:${b.h/7.2}%;`;if(el.dataset.layout!==layout){el.style.cssText=layout;el.dataset.layout=layout;}
   }
 }
-function enter(next,index=0){if(scene==='cutscene'&&next!=='cutscene')expandedCutscenes.stop(false);if(scene==='gallery'&&next!=='gallery')skyGallery.stop();if(scene==='intro'&&next!=='intro'){storyIntros.stop();if(introWaiter){introWaiter.resolve(false);introWaiter=null;}}if(scene==='results'&&next!=='results')nativeResults.stop();sceneTransitions.begin(canvas,scene,next,{reducedMotion:settings.reducedMotion});if(scene==='freeplay'&&next!=='freeplay'){stopPreview();finishRankReveal(false);}scene=next;sceneAt=performance.now();selected=index;transition=0;buttonSignature='';held.clear();pointerLanes.clear();touchControls.clear();if(next==='freeplay'){songIndex=SONGS[index]?index:songIndex;const list=freeplaySongs();if(!list.includes(SONGS[songIndex])&&list.length)songIndex=SONGS.indexOf(list[0]);fp.selectedId=list.includes(SONGS[songIndex])?SONGS[songIndex].id:'random';if(fp.character==='sky')loadSkyDJ();normalizeDifficulty();const pending=pendingRankReveal;pendingRankReveal=null;
+function enter(next,index=0){if(scene==='cutscene'&&next!=='cutscene')expandedCutscenes.stop(false);if(scene==='gallery'&&next!=='gallery')skyGallery.stop();if(scene==='intro'&&next!=='intro'){storyIntros.stop();if(introWaiter){introWaiter.resolve(false);introWaiter=null;}}if(scene==='results'&&next!=='results')nativeResults.stop();sceneTransitions.begin(canvas,scene,next,{reducedMotion:settings.reducedMotion,
+  stickers:['play','paused','results','gameover','cutscene'].includes(scene)&&['freeplay','story','menu'].includes(next)?game?.exitStickers||'cards':null});if(scene==='freeplay'&&next!=='freeplay'){stopPreview();finishRankReveal(false);}scene=next;sceneAt=performance.now();selected=index;transition=0;buttonSignature='';held.clear();pointerLanes.clear();touchControls.clear();if(next==='freeplay'){songIndex=SONGS[index]?index:songIndex;const list=freeplaySongs();if(!list.includes(SONGS[songIndex])&&list.length)songIndex=SONGS.indexOf(list[0]);fp.selectedId=list.includes(SONGS[songIndex])?SONGS[songIndex].id:'random';if(fp.character==='sky')loadSkyDJ();normalizeDifficulty();const pending=pendingRankReveal;pendingRankReveal=null;
 if(pending&&pending.song===fp.selectedId&&pending.character===fp.character&&pending.level===difficulty)rankReveal={...pending,at:sceneAt,cue:0};
 else fp.previewTimer=setTimeout(schedulePreview,0);}if(next==='story'&&!storyDifficulties().includes(difficulty))difficulty=1;if(!(settingsReturn==='paused'&&next==='settings')&&!['play','loading','gameover','paused','results','result-loading','editor','mods','character','intro','cutscene','gallery'].includes(next))audio.playMenu();announce(next==='menu'?'Main menu. Story mode, Freeplay, Donate and credits, Options.':next==='freeplay'?`Freeplay. ${SONGS[songIndex].name}. ${DIFFICULTIES[difficulty]}.`:next==='story'?`Story mode. Week ${WEEKS[storyWeek].id}: ${WEEKS[storyWeek].name}. ${DIFFICULTIES[difficulty]}.`:next==='settings'?'Options. Use up and down to select, left and right to change.':next==='controls'?'Key bindings. Select a direction and press Enter to change its key.':next);}
 function back(){if(scene==='cutscene'){expandedCutscenes.advance(true);return;}if(scene==='gallery'||scene==='patch-notes'){enter('menu',scene==='patch-notes'?6:5);return;}if(scene==='intro'){storyIntros.skip(performance.now());return;}audio.sfx('cancelMenu');if(scene==='character'){characterSelect.cancel(performance.now());return;}if(scene==='album'||scene==='instrumental'){enter('freeplay',songIndex);return;}if(scene==='play'){pauseGame();return;}if(scene==='paused'){resumeGame();return;}if(scene==='gameover'){exitSong();return;}if(scene==='results'){enter(story?'story':'freeplay',story?0:songIndex);return;}if(scene==='settings'){preferences.back();return;}if(scene==='credits'){enter('menu',2);return;}if(scene==='loading'){loadGeneration++;audio.stop();enter(story?'story':'freeplay');return;}if(scene==='menu'){enter('title');return;}if(scene==='title')return;enter('menu',scene==='freeplay'?1:0);}
 function menuBackground(name='menuBG',tint=null){const img=assets.images[name];const scale=Math.max(1280/img.width,720/img.height)*1.1;image(name,(1280-img.width*scale)/2,(720-img.height*scale)/2,img.width*scale,img.height*scale);if(tint){ctx.save();ctx.globalCompositeOperation='multiply';rect(0,0,1280,720,tint);ctx.restore();}}
 function footer(hint='ARROWS: SELECT    ENTER: CONFIRM    ESC: BACK'){text(hint,22,688,19,'#fff','left',2);newButton('back','Back',0,665,140,55,back);}
 function difficultyControl(x,y){const name=DIFFICULTIES[difficulty].toUpperCase();atlasFrame('campaign_menu_UI_assets','arrow left',x,y+2,0.65);const f=assets.frame('campaign_menu_UI_assets',name);if(f)atlasFrame('campaign_menu_UI_assets',name,x+52+(190-f.width*0.7)/2,y,0.7);atlasFrame('campaign_menu_UI_assets','arrow right',x+254,y+2,0.65);newButton('difficulty-left','Previous difficulty',x-12,y-12,62,72,()=>changeDifficulty(-1));newButton('difficulty-right','Next difficulty',x+240,y-12,70,72,()=>changeDifficulty(1));}
-function changeDifficulty(delta){if(scene==='freeplay')finishRankReveal(false);const list=scene==='freeplay'?availableDifficulties():storyDifficulties();if(!list.length)return;difficulty=list[(Math.max(0,list.indexOf(difficulty))+delta+list.length)%list.length];audio.sfx('scrollMenu',0.6);if(scene==='freeplay')schedulePreview();announce(DIFFICULTIES[difficulty]);}
+function changeDifficulty(delta){
+  if(scene==='freeplay')finishRankReveal(false);
+  const list=scene==='freeplay'?freeplayDifficulties():storyDifficulties();
+  if(!list.length)return;
+  difficulty=list[(Math.max(0,list.indexOf(difficulty))+delta+list.length)%list.length];
+  if(scene==='freeplay'){
+    const songs=freeplaySongs();
+    if(fp.selectedId!=='random'&&!songs.some(song=>song.id===fp.selectedId))selectFreeplay(songs[0]?.id||'random');
+    else schedulePreview();
+  }
+  audio.sfx('scrollMenu',0.6);
+  announce(DIFFICULTIES[difficulty]);
+}
 
 function bestFor(index=songIndex,character=fp.character,diff=difficulty){return storage.get(scoreKey(index,character,diff),null);}
 function openMenuChoice(){audio.sfx('confirmMenu');const choice=selected;if(choice===0)enter('story');else if(choice===1)enter('freeplay',songIndex);else if(choice===2)enter('credits');else if(choice===3)openSettings();else if(choice===4)openMods();else if(choice===5&&!settings.skyDisableMenus)openSkyGallery();else if(choice===6){patchPage=0;enter('patch-notes');}}
@@ -352,7 +374,11 @@ function drawFreeplay(){
   text(settings.keyMode+'K [6]',530,686,16,'#fff','left',0);newButton('fp-mode','Switch 4K / 6K mode',510,670,145,48,toggleKeyMode);text('TAB: CHARACTER',180,686,16,'#fff','left',0);newButton('fp-mods','Import and manage mods',390,670,120,48,openMods);text('M: MODS',392,686,16,'#fff','left',0);newButton('fp-character',`Choose character, current ${({bf:'Boyfriend',pico:'Pico',sky:'Sky'}[fp.character])}`,155,670,225,48,beginCharacterSelection);newButton('fp-instrumental',`Instrumental: ${fp.instrumental}`,15,165,310,50,()=>enter('instrumental'));
   text(`I: INST ${fp.instrumental.toUpperCase()}`,18,181,17,'#111','left',0);
 }
-function freeplaySongs(){let list=SONGS.filter(s=>{if(s.hidden||!availableDifficulties(SONGS.indexOf(s)).length)return false;if(fp.search&&!s.name.toLowerCase().includes(fp.search.toLowerCase()))return false;if(fp.filter==='favorites')return fp.favorites.has(s.id);if(fp.filter==='numbers')return /^\d/.test(s.name);if(fp.filter==='all')return true;const [a,z]=fp.filter.split('-');const first=s.name[0].toLowerCase();return first>=a&&first<=z;});if(fp.sort==='title')list.sort((a,b)=>a.name.localeCompare(b.name));if(fp.sort==='bpm')list.sort((a,b)=>a.bpm-b.bpm);if(fp.sort==='score')list.sort((a,b)=>(bestFor(SONGS.indexOf(b))?.score||0)-(bestFor(SONGS.indexOf(a))?.score||0));return list;}
+function freeplayDifficulties(){
+  const levels=new Set(SONGS.flatMap((song,i)=>song.hidden?[]:availableDifficulties(i)));
+  return DIFFICULTIES.map((_,i)=>i).filter(i=>levels.has(i));
+}
+function freeplaySongs(){let list=SONGS.filter(s=>{if(s.hidden||!availableDifficulties(SONGS.indexOf(s)).includes(difficulty))return false;if(fp.search&&!s.name.toLowerCase().includes(fp.search.toLowerCase()))return false;if(fp.filter==='favorites')return fp.favorites.has(s.id);if(fp.filter==='numbers')return /^\d/.test(s.name);if(fp.filter==='all')return true;const [a,z]=fp.filter.split('-');const first=s.name[0].toLowerCase();return first>=a&&first<=z;});if(fp.sort==='title')list.sort((a,b)=>a.name.localeCompare(b.name));if(fp.sort==='bpm')list.sort((a,b)=>a.bpm-b.bpm);if(fp.sort==='score')list.sort((a,b)=>(bestFor(SONGS.indexOf(b))?.score||0)-(bestFor(SONGS.indexOf(a))?.score||0));return list;}
 function freeplayRows(){return [{id:'random'},...freeplaySongs()];}
 function selectFreeplay(id){finishRankReveal(false);fp.selectedId=id;const index=SONGS.findIndex(s=>s.id===id);if(index>=0){songIndex=index;normalizeDifficulty();}audio.sfx('scrollMenu',0.5);schedulePreview();announce(id==='random'?'Random song':SONGS[index]?.name||'No song');}
 function stopPreview(){clearTimeout(fp.previewTimer);fp.previewGeneration++;audio.stopPreview();fp.previewing=false;}
@@ -394,7 +420,16 @@ async function startSong(index,isStory=false,continueStory=false,override=null,e
   const generation=++loadGeneration;pendingRankReveal=null;songIndex=index;story=isStory;const character=isStory?storyCharacter():entry.character||fp.character;normalizeDifficulty(index,character);if(!continueStory){storyTotal=0;storyStats=[];}audio.stop();audio.stopMenu();enter('loading');errorText='';announce(`Loading ${SONGS[index].name}. ${DIFFICULTIES[difficulty]}.`);
   try{await audio.unlock();let choice=songChoice(index,difficulty,character,isStory?'default':fp.instrumental);if(override?.raw){const raw=override.raw.song;choice={...choice,character:playerIdentity(raw.player1||choice.character),opponent:raw.player2||choice.opponent,stage:raw.stage||choice.stage,characters:{...choice.characters,player:raw.player1||choice.characters?.player,opponent:raw.player2||choice.characters?.opponent,girlfriend:raw.gfVersion??raw.player3??choice.characters?.girlfriend}};choice.visualOverrides={characters:choice.characters,stage:choice.stage};choice.noteTexture=raw.noteTexture;}let [chart,originalDuration,modVisuals]=await Promise.all([override?Promise.resolve(parseChart(override.raw)):getChart(index,difficulty,character),prepareChoice(choice),choice.mod?modLibrary.getVisuals(choice,assets):Promise.resolve(null),audio.warmEffects(),prepareSceneAssets(choice)]);if(generation!==loadGeneration)return;
     if(override?.audio){for(const i of [0,1])if(override.audio[i])audio.buffers[i]=override.audio[i];if(override.audio[1])audio.buffers.length=2;}audio.allowVoices=override?.raw?.song?.needsVoices!==false;const extraOffset=Number(override?.raw?.song?.offset)||0;if(extraOffset)audio.trackOffsets=audio.trackOffsets.map(offset=>offset+extraOffset);const duration=originalDuration+extraOffset;
-    if(settings.keyMode===6)chart=chartForSixKeys(chart);comboFeedback.reset();const notes=chart.notes.map(n=>({...n,hit:false,missed:false,holdDone:0,holdBroken:false,started:false}));game={chart,notes,duration,modVisuals,speakerIndex:0,laneCount:chart.laneCount||4,eventIndex:0,eventFocus:null,eventZoom:1,eventScroll:1,eventBop:{},lastLightning:-30,lightningAt:-99999,lightningDelay:8,stats:{...makeStats(),totalNotes:notes.filter(n=>n.player).length},opponentIndex:0,scanIndex:0,startTime:-60000/chart.bpm*5,time:-60000/chart.bpm*5,beat:-6,lastBeat:-6,rating:null,particles:[],completed:false,chartPlayer:chart.sections[0]?.player||false,practice:settings.practice,botplay:settings.botplay,custom:!!override,override,choice,character:choice.character,frameTimes:[]};
+    if(settings.keyMode===6)chart=chartForSixKeys(chart);comboFeedback.reset();const notes=chart.notes.map(n=>({...n,hit:false,missed:false,holdDone:0,holdBroken:false,started:false}));game={chart,notes,duration,modVisuals,speakerIndex:0,laneCount:chart.laneCount||4,eventIndex:0,eventFocus:null,eventZoom:1,eventScroll:1,eventBop:{},lastLightning:-30,lightningAt:-99999,lightningDelay:8,stats:{...makeStats(),totalNotes:notes.filter(n=>n.player).length},opponentIndex:0,scanIndex:0,startTime:-60000/chart.bpm*5,time:-60000/chart.bpm*5,beat:-6,lastBeat:-6,rating:null,particles:[],splashes:[],completed:false,chartPlayer:chart.sections[0]?.player||false,practice:settings.practice,botplay:settings.botplay,custom:!!override,override,choice,character:choice.character,frameTimes:[]};
+    skyDetails.prepareStickers(choice)?.then(stickers=>{if(game?.choice===choice)game.exitStickers=stickers;});
+    game.skyTomatoDance=choice.baseSong==='wife-forever'&&choice.variant==='pico'&&Math.random()<.25;
+    game.modifiers=override?{rate:1,drain:0,damage:1}:{
+      rate:settings.songRate,drain:settings.healthDrain,damage:settings.missDamage,
+      instantFail:settings.instantFail,mirror:settings.mirrorNotes,noFail:settings.noFail,
+    };
+    audio.songRate=game.modifiers.rate;
+    audio.mutedRoles=new Set();
+    if(game.modifiers.mirror)for(const note of notes)note.lane=game.laneCount-1-note.lane;
     const captionFile=songCaptions(choice);
     if(captionFile){const current=game;expandedCaptions(captionFile).then(cues=>{if(game===current)game.captions=cues;}).catch(()=>{});}
     if(choice.charts?.picospeaker){
@@ -413,7 +448,7 @@ async function openChartEditor(){
 }
 function pauseGame(){if(scene!=='play'||!game||game.skyTutorialAt!=null)return;audio.pause();enter('paused');audio.sfx('scrollMenu',0.5);announce('Paused. Resume, Restart Song, Options, or Exit to Menu.');}
 function resumeGame(){if(scene!=='paused'||!game)return;game.holdResumeUntil=audio.time()+settings.offset+150;enter('play');audio.resume();}
-function exitSong(){loadGeneration++;audio.stop();audio.stopMenu();game=null;enter(story?'story':'freeplay',story?0:songIndex);}
+function exitSong(){loadGeneration++;audio.stop();audio.stopMenu();enter(story?'story':'freeplay',story?0:songIndex);game=null;}
 function retrySong(){if(game?.retryAt)return;if(game?.choice.baseSong==='sky'&&game.choice.variant==='erect'&&Math.random()<.08){launchSkySecret();return;}const override=game?.override,death=deathConfig();audio.stopMenu();if(scene==='gameover'&&(death.pixel||death.sounds)){game.retryAt=frameTime;const generation=loadGeneration;audio.playMenu(death.sounds?.confirm||death.pixel.confirmMusic.split('/').at(-1).replace(/\.ogg$/,''),{loop:false});setTimeout(()=>{if(scene==='gameover'&&generation===loadGeneration)startSong(songIndex,story,story,override,{retry:true});},1000);return;}startSong(songIndex,story,story,override,{retry:true});}
 function animateActor(actor,lane,time,miss=false){if(actor.forced?.lock&&time<actor.forced.until)return;if(actor.forced&&!actor.forced.lock)actor.forced=null;actor.direction=DIRECTIONS[laneDirection(lane)]+(miss?'miss':'');actor.since=time;actor.until=time+Math.max(150,60000/(game?.chart.bpm||100)*0.65);}
 function animateNote(actor,note,time,miss=false){if(String(note.kind).toLowerCase()==='noanim'||actor.forced?.lock&&time<actor.forced.until)return;animateActor(actor,note.lane,time,miss);if(!miss&&(String(note.kind).toLowerCase()==='skyaltnote'||String(note.kind).toLowerCase()==='mom'||note.altAnim))actor.direction+='-alt';else if(!miss&&String(note.kind).toLowerCase()==='censor')actor.direction+='-censor';}
@@ -428,9 +463,14 @@ function laneFromCode(code){return noteLaneFor(settings,code,laneCount());}
 function noteSpecial(note,actor,time){if(note.kind)expandedNote(game,note,time,{player:actorBF,opponent:actorDad},(sound,gain)=>audio.sfx(sound,gain));if(/^(hey!?|cheer)$/i.test(String(note.kind||'')))actor.forced={name:String(note.kind).toLowerCase().startsWith('hey')?'hey':'cheer',since:time,until:time+60000/bpmAt(game.chart,time),lock:true};}
 function hit(note,time,auto=false){
   if(isOfficialCanNote(game.choice,'firegun')&&note.kind==='weekend-1-firegun'&&!canFire(game,time)){miss(note,time);return;}
-  note.hit=true;note.started=true;const delta=time-note.time;const j=applyHit(game.stats,delta);if(!j)return;comboFeedback.hit(note,time,game.stats.combo,bpmAt(game.chart,time),game.botplay);laneFlashes[note.lane]=frameTime+145;animateNote(actorBF,note,time);noteSpecial(note,actorBF,time);audio.muteVoices(false);game.rating={name:j.name,since:frameTime,combo:game.stats.combo,delta};if(j.name==='sick'&&settings.noteSplash!==false&&!settings.reducedMotion){for(let i=0;i<7;i++)game.particles.push({x:laneX(note.lane,true)+55,y:receptorY()+55,vx:(Math.random()-0.5)*220,vy:(Math.random()-0.5)*220,life:0.35,color:COLORS[laneDirection(note.lane)]});}}
-function miss(note,time){if(note?.missed)return;if(note)note.missed=true;applyMiss(game.stats);audio.muteVoices(true);game.rating={name:'miss',since:frameTime,combo:0,delta:0};if(note){animateNote(actorBF,note,time,true);if(note.kind)expandedNote(game,note,time,{player:actorBF,opponent:actorDad},(sound,gain)=>audio.sfx(sound,gain),true);}audio.sfx('missnote'+(1+Math.floor(Math.random()*3)),0.12);}
-function pressLane(lane){if(scene!=='play'||!game||game.skyTutorialAt!=null||game.skyManifestBlock)return;const time=audio.time()+settings.offset;if(time<-HIT_WINDOW)return;laneFlashes[lane]=frameTime+80;if(game.botplay)return;const note=nearestNote(game.notes,lane,time);if(note)hit(note,time);else if(!settings.ghostTapping&&time>0)miss(null,time);}
+  note.hit=true;note.started=true;const delta=time-note.time;const j=applyHit(game.stats,delta);if(!j)return;comboFeedback.hit(note,time,game.stats.combo,bpmAt(game.chart,time),game.botplay);laneFlashes[note.lane]=frameTime+145;animateNote(actorBF,note,time);noteSpecial(note,actorBF,time);audio.muteVoices(false);game.rating={name:j.name,since:frameTime,combo:game.stats.combo,delta};if(j.name==='sick'&&settings.noteSplash!==false&&!settings.reducedMotion){game.splashes.push({lane:note.lane,at:frameTime,variant:1+Math.floor(Math.random()*2)});}}
+function applyGameplayMiss(){
+  const before=game.stats.health;
+  applyMiss(game.stats);
+  game.stats.health=game.modifiers.instantFail?0:clamp(before-.12*game.modifiers.damage,0,2);
+}
+function miss(note,time){if(note?.missed)return;if(note)note.missed=true;applyGameplayMiss();audio.muteVoices(true);game.rating={name:'miss',since:frameTime,combo:0,delta:0};if(note){animateNote(actorBF,note,time,true);if(note.kind)expandedNote(game,note,time,{player:actorBF,opponent:actorDad},(sound,gain)=>audio.sfx(sound,gain),true);}audio.sfx('missnote'+(1+Math.floor(Math.random()*3)),0.12);}
+function pressLane(lane){if(scene!=='play'||!game||game.skyTutorialAt!=null||game.skyManifestBlock||game.skyDetails?.block)return;const time=audio.time()+settings.offset;if(time<-HIT_WINDOW)return;laneFlashes[lane]=frameTime+80;if(game.botplay)return;const note=nearestNote(game.notes,lane,time);if(note)hit(note,time);else if(!settings.ghostTapping&&time>0)miss(null,time);}
 function updateHold(note,time,pressed){
   if(!note.hit||note.length<=0||note.holdBroken||note.holdComplete)return;
   const progress=holdProgress(game.chart,note,time,pressed);
@@ -454,15 +494,16 @@ function releaseLane(lane){
   }
 }
 function updateSongEvents(time){
-  if(game.skyPicoOutcome){
-    const muted=game.skyPicoMuted??=new WeakSet();
-    for(const [index,source] of audio.sources.entries()){
-      if(audio.trackRoles[index]==='opponent'&&!muted.has(source)){source.disconnect();muted.add(source);}
-    }
-  }
-updateChartEvents(game,time,{bpm:bpmAt(game.chart,time),animate:(target,name,since,lock)=>{const role=['bf','boyfriend','player'].includes(target)?'player':['gf','girlfriend','partner'].includes(target)?'girlfriend':['dad','opponent'].includes(target)?'opponent':null;if(!role){game.propAnimations??={};game.propAnimations[target]={name,since,until:since+1500};return;}const actor=role==='player'?actorBF:role==='opponent'?actorDad:actorGF;actor.forced={name,prefix:name,since,until:since+1200,lock};audio.muteVoices(false);}});nativeContent.updateStage(game,time);}
+updateChartEvents(game,time,{bpm:bpmAt(game.chart,time),animate:(target,name,since,lock)=>{const role=['bf','boyfriend','player'].includes(target)?'player':['gf','girlfriend','partner'].includes(target)?'girlfriend':['dad','opponent'].includes(target)?'opponent':null;if(!role){game.propAnimations??={};game.propAnimations[target]={name,since,until:since+1500};return;}const actor=role==='player'?actorBF:role==='opponent'?actorDad:actorGF;if(game.choice.baseSong==='wife-forever'&&game.choice.variant==='pico'&&!game.skyTomatoDance&&
+    ['caramelTransition','tomatoThrow','tomatoHit'].includes(name))return;
+  skyDetails.chartPose(game,role,name);
+  const alias=nativeContent.character(stageCharacterId(role),role==='player')?.animationMap?.[name];
+  const frames=alias?.frameIndices?.length||alias?.frameCount;
+  const duration=frames?frames*1000/(alias.fps||24):name==='pointing'?69*1000/24:1200;
+  actor.forced={name,prefix:name,since,until:since+duration,lock};audio.muteVoices(false);}});nativeContent.updateStage(game,time);}
 function updateGame(dt){
   if(!game)return;const time=game.time=audio.time()+settings.offset;const beat=beatAt(game.chart,time);game.beat=beat;if(skyPolish.updateTutorial(game,time,{audio,finish:finishSong}))return;updateSongEvents(time);skyPolish.updateManifest(game,time,{audio,actors:{player:actorBF,opponent:actorDad,girlfriend:actorGF}});
+  skyDetails.update(game,time,{player:actorBF,opponent:actorDad,girlfriend:actorGF});
   const count=Math.floor(time/(60000/game.chart.bpm));if(time<0&&count!==lastCountdown){lastCountdown=count;const sound={[-4]:'intro3',[-3]:'intro2',[-2]:'intro1',[-1]:'introGo'}[count];if(sound)audio.sfx(pixelStage(game.choice)?pixelUI.countdownSound(count)||sound:sound,0.7);}
   while(game.speakerNotes?.[game.speakerIndex]?.t<=time){
     const shot=game.speakerNotes[game.speakerIndex++],lane=shot.d%4;
@@ -476,16 +517,19 @@ function updateGame(dt){
   game.cameraBump=Math.max(0,(game.cameraBump||0)-dt*0.045);
   const section=game.chart.sections.find(s=>time>=s.start&&time<s.end);if(section)game.chartPlayer=section.player;
   const notes=game.notes;for(let i=game.scanIndex;i<notes.length;i++){const n=notes[i];if(n.time>time+HIT_WINDOW)break;
-    if(!n.player){if(!n.hit&&n.time<=time){n.hit=true;if(game.skyPicoOutcome)continue;opponentFlashes[n.lane]=frameTime+160;animateNote(actorDad,n,time);noteSpecial(n,actorDad,time);actorDad.until=Math.max(actorDad.until,n.time+n.length);if(!game.choice.audioRoles)audio.muteVoices(false);}continue;}
-    if(!n.hit&&!n.missed){if(game.botplay&&n.time<=time)hit(n,n.time,true);else if(time-n.time>HIT_WINDOW)miss(n,time);}
+    if(!n.player){if(!n.hit&&n.time<=time){n.hit=true;if(game.skyPicoOutcome||game.skyManifestDead||(game.skyManifestLiquid==='boiling'&&game.beat>=160))continue;opponentFlashes[n.lane]=frameTime+160;animateNote(actorDad,n,time);noteSpecial(n,actorDad,time);actorDad.until=Math.max(actorDad.until,n.time+n.length);if(!game.choice.audioRoles)audio.muteVoices(false);}continue;}
+    if(!n.hit&&!n.missed){
+      if((game.skyManifestBlock||game.skyDetails?.block)&&n.time<=time){n.missed=true;game.stats.totalNotes--;continue;}
+      if(game.botplay&&n.time<=time)hit(n,n.time,true);else if(time-n.time>HIT_WINDOW)miss(n,time);}
     if(n.hit&&n.length>0){const pressed=game.botplay||laneHeld(n.lane);if(pressed||time>=(game.holdResumeUntil??-Infinity))updateHold(n,time,pressed);}
   }
   while(game.scanIndex<notes.length&&notes[game.scanIndex].time+notes[game.scanIndex].length<time-300)game.scanIndex++;
   for(const p of game.particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;}game.particles=game.particles.filter(p=>p.life>0);
-  if(game.stats.health<=0&&!game.practice&&!game.botplay){gameOver();return;}
-  if(audio.time()>=game.duration-35&&!game.completed)finishSong();
+  if(time>=0&&!game.practice&&!game.botplay)game.stats.health=Math.max(0,game.stats.health-game.modifiers.drain*dt);
+  if(game.stats.health<=0&&!game.practice&&!game.botplay&&!game.modifiers.noFail){gameOver();return;}
+  if((audio.time()>=game.duration-35||game.choice.baseSong==='sky-mobile'&&beat>=256)&&!game.completed)finishSong();
 }
-function missHold(note,time){applyMiss(game.stats);audio.muteVoices(true);game.rating={name:'miss',since:frameTime,combo:0,delta:0};}
+function missHold(note,time){applyGameplayMiss();audio.muteVoices(true);game.rating={name:'miss',since:frameTime,combo:0,delta:0};}
 async function runStorySequence(id){const generation=loadGeneration,current=game;if(scene!=='loading')enter('loading');await storyIntros.load(id);if(generation!==loadGeneration||current!==game)return false;storyIntros.begin(id,{now:performance.now(),volume:settings.volume,reducedMotion:settings.reducedMotion,story,character:game.character,variation:game.choice.variant||'',charting:game.custom,cameraStart:[850,500],cameraStartZoom:.8,censored:settings.naughtyness===false,subtitles:settings.subtitles!==false});if(storyIntros.done)return true;introAnnouncement='';enter('intro');return new Promise(resolve=>introWaiter={resolve,generation,current});}
 function drawStorySequence(){storyIntros.update(frameTime);const elapsed=frameTime-sceneAt,stageTime=Math.max(0,game.time)+elapsed;game.beat=beatAt(game.chart,stageTime);ctx.save();const focus=storyIntros.cameraFocus;if(focus){const stage=nativeContent.stage(game.choice),worldScale=stage?.view?.scale??.8,ox=stage?.view?.x??40,oy=stage?.view?.y??-70;ctx.translate(640,360);ctx.scale(storyIntros.cameraZoom/worldScale,storyIntros.cameraZoom/worldScale);ctx.translate(-(ox+worldScale*focus[0]),-(oy+worldScale*focus[1]));}drawStage(stageTime);ctx.restore();const targets=storyIntros.draw(ctx,{now:frameTime,volume:settings.volume});for(const target of targets)newButton(target.id,target.label,target.x,target.y,target.w,target.h,()=>storyIntros[target.action](performance.now()));const shown=storyIntros.phase==='dialogue'?storyIntros.currentText(frameTime):'';canvas.dataset.dialogue=shown;canvas.dataset.dialogueLine=String(storyIntros.pageIndex??0);canvas.dataset.introPhase=storyIntros.phase;if(storyIntros.phase==='dialogue'){const full=storyIntros.page?.text||'';if(full!==introAnnouncement){introAnnouncement=full;announce(full);}}if(storyIntros.done&&introWaiter){const waiting=introWaiter;introWaiter=null;waiting.resolve(waiting.generation===loadGeneration&&waiting.current===game);}}
 function deathConfig(){const id=game?.choice.characters?.player,character=nativeContent.character(id,true),pixel=nativeContent.data.uiPixelGameover?.[id],first=character?.animationMap?.firstDeath;return{id,character,pixel,sounds:skyDeathSounds(id,settings.naughtyness!==false),duration:first?(first.frameIndices?.length||first.frameCount||24)/(first.fps||24)*1000:game?.character==='pico'?2000:1200};}
@@ -497,7 +541,7 @@ function gameOver(){pendingRankReveal=null;audio.stop();const death=deathConfig(
     if(quote)audio.sfx(quote,.78);
   },death.pixel||death.sounds?death.duration:1200);announce('Game over. Enter to retry. Escape for menu.');}
 async function finishSong(){
-  game.completed=true;audio.stop();const finishedGame=game,generation=loadGeneration,extra=game.custom?null:expandedOutro(game.choice,story,{manifestLiquid:game.skyManifestLiquid});if(extra&&(!await runExpandedSequence(extra)||finishedGame!==game||generation!==loadGeneration))return;const outro=game.custom?null:songOutro(SONGS[songIndex].id,{story,variant:game.choice.variant});if(outro){try{const complete=await runStorySequence(outro);if(!complete||finishedGame!==game||generation!==loadGeneration)return;}catch(error){console.error(error);announce('Cutscene could not load: '+error.message);}}const s=game.stats,forcedRank=game.forcedResultRank;const legitimate=!game.practice&&!game.botplay&&!game.custom;
+  game.completed=true;audio.stop();const finishedGame=game,generation=loadGeneration,extra=game.custom?null:expandedOutro(game.choice,story,{manifestLiquid:game.skyManifestLiquid});if(extra&&(!await runExpandedSequence(extra)||finishedGame!==game||generation!==loadGeneration))return;const outro=game.custom?null:songOutro(SONGS[songIndex].id,{story,variant:game.choice.variant});if(outro){try{const complete=await runStorySequence(outro);if(!complete||finishedGame!==game||generation!==loadGeneration)return;}catch(error){console.error(error);announce('Cutscene could not load: '+error.message);}}const s=game.stats,forcedRank=game.forcedResultRank;const legitimate=!game.practice&&!game.botplay&&!game.custom&&game.modifiers.rate===1&&!game.modifiers.drain&&game.modifiers.damage===1&&!game.modifiers.instantFail&&!game.modifiers.mirror&&!game.modifiers.noFail;
   if(legitimate){
     const old=bestFor(songIndex,game.character,difficulty),oldRank=storedRank(old),newRank=forcedRank||nativeResultRank(s);
     const improved=!!newRank&&FP_RANK_ORDER.indexOf(newRank)>FP_RANK_ORDER.indexOf(oldRank);
@@ -568,11 +612,13 @@ function drawExpandedStage(time,script=null){
   const {scale,originX,originY}=view,originPan=view.pan||0;
   const worldOptions={time,pan:originPan,worldScale:scale,originX,originY,reducedMotion:settings.reducedMotion,mobile:mobileActive()};
   const project=([x,y])=>[originX+x*scale-originPan,originY+y*scale];
-  const deadSniper=game.stressSniper&&!script;
-  const skyOutcome=game.skyPicoOutcome&&!script?game.skyPicoOutcome:null;
+  const deadSniper=script?null:game.stressSniper;
+  const skyOutcome=script?null:game.skyPicoOutcome;
   const positions={},focusPoints={},layers=stage.props.map(prop=>{
     const shift=script?.propOffsets?.[prop.name]||(deadSniper&&prop.name==='tankBricks'?[0,100]:null);
-    return {z:view.propZ?.[prop.name]??prop.zIndex??0,prop:shift?{...prop,position:prop.position.map((v,i)=>v+shift[i])}:prop};
+    const show=script?.showProps?.includes(prop.name);
+    const positioned=shift?{...prop,position:prop.position.map((v,i)=>v+shift[i])}:prop;
+    return {z:view.propZ?.[prop.name]??prop.zIndex??0,prop:show?{...positioned,alpha:1}:positioned};
   });
   for(const [role,key] of [['girlfriend','gf'],['opponent','dad'],['player','bf']]){
     const meta=stage.characters[key];
@@ -598,6 +644,7 @@ function drawExpandedStage(time,script=null){
     if(anchor&&prop.asset)layers.push({z:prop.z,cutActor:prop,position:project(anchor.position)});
   }
   layers.push(...skyPolish.stageLayers(game));
+  if(choice.stage==='theShiftDarkErect')layers.push({z:50,angerBackdrop:true});
   const resolve=([role,x,y,zoom])=>{
     const point=role==='position'?[0,0]:focusPoints[role]||[(640-originX+originPan)/scale,(360-originY)/scale];
     const [px,py]=project([point[0]+x,point[1]+y]);
@@ -625,18 +672,31 @@ function drawExpandedStage(time,script=null){
   ctx.save();
   if(pixelStage(choice))ctx.imageSmoothingEnabled=false;
   ctx.translate(640+shakeX,360+shakeY);ctx.scale(bump,bump);ctx.translate(-centerX,-centerY);
+  try {
   for(const layer of layers.sort((a,b)=>a.z-b.z)){
     if(layer.cutActor){
       const {asset,label,age,offset,scale:actorScale=1,loop}=layer.cutActor;
       ctx.save();
       if(script?.cutsceneId==='sky-pico-stage'||skyOutcome)ctx.filter='contrast(1.08) hue-rotate(-27deg)';
-      drawSkyAnimation(ctx,asset,age,layer.position[0]+offset[0]*scale,layer.position[1]+offset[1]*scale,{scale:scale*actorScale,label,loop});
-      ctx.restore();
+      try{drawSkyAnimation(ctx,asset,age,layer.position[0]+offset[0]*scale,layer.position[1]+offset[1]*scale,{scale:scale*actorScale,label,loop});}
+      finally{ctx.restore();}
+    if(script?.smoke?.art&&layer.cutActor.asset===script.actors[0].asset){
+      const {art,age}=script.smoke,frames=art.frames,frame=frames[Math.floor(age*.024)%frames.length];
+      if(frame){
+        ctx.save();
+        ctx.globalCompositeOperation='lighter';
+        ctx.globalAlpha=.4*clamp(age/500,0,1)*clamp((3950-age)/2000,0,1);
+        ctx.drawImage(art.image,frame.x,frame.y,frame.width,frame.height,
+          layer.position[0]-110*scale,layer.position[1]-550*scale,frame.width*scale,frame.height*scale);
+        ctx.restore();
+      }
+    }
       continue;
     }
     if(layer.role&&(skyOutcome&&layer.role==='opponent'||script?.actors?.some(entry=>entry.role===layer.role&&entry.asset)))continue;
     if(layer.role&&(script?.hideActors?.includes(layer.role)||scene==='intro'&&storyIntros.hideActors?.includes(layer.role)))continue;
-    if(layer.prop&&(deadSniper&&layer.prop.name==='sniper'||script?.hideProps?.includes(layer.prop.name)||scene==='intro'&&storyIntros.hideProps?.includes(layer.prop.name)))continue;
+    if(layer.prop&&(deadSniper&&layer.prop.name==='sniper'||(choice.baseSong==='sky-mobile'&&layer.prop.name==='babyGradient'||choice.stage==='theShiftDarkErect'&&choice.baseSong!=='sky-lyrics'&&layer.prop.name==='lyricsSign')||script?.hideProps?.includes(layer.prop.name)||scene==='intro'&&storyIntros.hideProps?.includes(layer.prop.name)))continue;
+    if(layer.angerBackdrop){skyDetails.drawBackdrop(ctx,game,time);continue;}
     if(layer.skyEffect){skyPolish.drawEffect(ctx,layer.skyEffect,game,worldOptions);continue;}
     if(layer.prop){
       const scroll=layer.prop.scroll||[1,1],parallax={...worldOptions,
@@ -656,7 +716,7 @@ function drawExpandedStage(time,script=null){
       const pivot=y-900*scale;
       ctx.translate(x,pivot);ctx.rotate(layer.angle);ctx.translate(-x,-pivot);
     }
-    const drawn=skyPolish.drawActor(ctx,game,layer.role,()=>drawSceneCharacter(layer.role,actor,layer.position,time,layer.actorScale,layer.globalOffsets),worldOptions);
+    const drawn=skyPolish.drawActor(ctx,game,layer.role,()=>skyDetails.drawSpecialPose(ctx,game,actor,layer.role,layer.position,time,layer.actorScale)||drawSceneCharacter(layer.role,actor,layer.position,time,layer.actorScale,layer.globalOffsets),worldOptions);
     if(layer.role==='girlfriend'&&script?.muzzle?.art){
       const {art,age}=script.muzzle,frame=art.frames[Math.floor(age*.024)];
       if(frame){
@@ -669,17 +729,18 @@ function drawExpandedStage(time,script=null){
       }
     }
     ctx.restore();
+    if(layer.role==='opponent')skyDetails.drawScream(ctx,game,actor,layer.position,time,scale);
     if(!drawn&&layer.role==='player'){
       const pico=game.character==='pico',s=pico?.64:.66,dim=pico?500:412;
       drawActor(pico?'PICO':'BOYFRIEND',actorBF,layer.position[0]-dim*s/2,layer.position[1]-dim*s,s,time);
     }
   }
   drawOfficialStageFX(ctx,assets,game,stage,view,{time,elapsed:script?.elapsed,cutsceneId:script?.cutsceneId,phase:'afterActors'});
-  ctx.restore();
+  } finally {ctx.restore();}
   if(settings.backgroundDim)rect(0,0,1280,720,'rgba(0,0,0,'+settings.backgroundDim+')');
   if(script)return {...Object.fromEntries(Object.entries(positions).map(([role,[x,y]])=>[role,[640+(x-centerX)*bump,360+(y-centerY)*bump]])),scale:scale*bump};
 }
-async function prepareSceneAssets(choice){const week=SONGS[songIndex].week,modern=choice.variant==='erect'||choice.character==='pico'||choice.stage?.endsWith('Erect'),needed=new Set([...nativeContent.required(choice),...pixelUI.required(choice)]);if(choice.noteTexture&&assets.atlases[choice.noteTexture])needed.add(choice.noteTexture);for(const name of [choice.character==='pico'?'PICO':'BOYFRIEND','BF_FEAR','DADDY_DEAREST','GF_FEAR'])needed.add(name);if((choice.character==='pico'||['nene-tankmen','otis-speaker'].includes(choice.characters?.girlfriend))&&!pixelStage(choice))for(const name of ['ABOT','ABOT_SCREEN','ABOT_VIZ'])needed.add(name);if(week===2||choice.stage?.startsWith('spooky')){if(modern)needed.add('GF_DARK');for(const name of modern?['SPOOKY_DARK','MONSTER','week2-bgDark','week2-bgLight','week2-stairsDark','week2-stairsLight','WEEK2_TREES']:['SPOOKY','MONSTER','HALLOWEEN'])needed.add(name);}else if(!nativeContent.stage(choice)&&!modern)for(const name of ['stageback','stagefront','stagecurtains'])needed.add(name);for(const name of ['GF_EXTENDED','NENE_EXTENDED'])needed.delete(name);if(choice.character!=='pico')needed.delete('PICO');assets.releaseUnused(needed);await Promise.all([assets.ensure([...needed]),skyPolish.prepare(choice,audio),nativeContent.prepare(choice),comboFeedback.prepare(),...officialRequiredSounds(choice).map(name=>audio.load(''+name+'.ogg').catch(()=>null)),nativeExtras.load('characters'),modern&&week!==2&&!nativeContent.stage(choice)?nativeExtras.load('erectStage'):Promise.resolve()]);if(pixelStage(choice))await Promise.all([...pixelUI.sounds(),...(Object.values(nativeContent.data.uiPixelGameover||{}).map(v=>v.lossSound.split('/').at(-1).replace(/\.ogg$/,'')))].map(name=>audio.load(''+name+'.ogg').catch(()=>null)));if(choice.stage?.startsWith('philly')||choice.stage?.startsWith('limo'))await Promise.all(['train_passes','carPass0','carPass1'].map(name=>audio.load(''+name+'.ogg').catch(()=>null)));}
+async function prepareSceneAssets(choice){const week=SONGS[songIndex].week,modern=choice.variant==='erect'||choice.character==='pico'||choice.stage?.endsWith('Erect'),needed=new Set([...nativeContent.required(choice),...pixelUI.required(choice),pixelStage(choice)?'NATIVE_SPLASH_PIXEL':'NATIVE_SPLASH','combo']);if(choice.noteTexture&&assets.atlases[choice.noteTexture])needed.add(choice.noteTexture);for(const name of [choice.character==='pico'?'PICO':'BOYFRIEND','BF_FEAR','DADDY_DEAREST','GF_FEAR'])needed.add(name);if((choice.character==='pico'||['nene-tankmen','otis-speaker'].includes(choice.characters?.girlfriend))&&!pixelStage(choice))for(const name of ['ABOT','ABOT_SCREEN','ABOT_VIZ'])needed.add(name);if(week===2||choice.stage?.startsWith('spooky')){if(modern)needed.add('GF_DARK');for(const name of modern?['SPOOKY_DARK','MONSTER','week2-bgDark','week2-bgLight','week2-stairsDark','week2-stairsLight','WEEK2_TREES']:['SPOOKY','MONSTER','HALLOWEEN'])needed.add(name);}else if(!nativeContent.stage(choice)&&!modern)for(const name of ['stageback','stagefront','stagecurtains'])needed.add(name);for(const name of ['GF_EXTENDED','NENE_EXTENDED'])needed.delete(name);if(choice.character!=='pico')needed.delete('PICO');assets.releaseUnused(needed);await Promise.all([assets.ensure([...needed]),skyPolish.prepare(choice,audio),skyDetails.prepare(choice,audio),nativeContent.prepare(choice),comboFeedback.prepare(),...officialRequiredSounds(choice).map(name=>audio.load(''+name+'.ogg').catch(()=>null)),nativeExtras.load('characters'),modern&&week!==2&&!nativeContent.stage(choice)?nativeExtras.load('erectStage'):Promise.resolve()]);if(pixelStage(choice))await Promise.all([...pixelUI.sounds(),...(Object.values(nativeContent.data.uiPixelGameover||{}).map(v=>v.lossSound.split('/').at(-1).replace(/\.ogg$/,'')))].map(name=>audio.load(''+name+'.ogg').catch(()=>null)));if(choice.stage?.startsWith('philly')||choice.stage?.startsWith('limo'))await Promise.all(['train_passes','carPass0','carPass1'].map(name=>audio.load(''+name+'.ogg').catch(()=>null)));}
 function drawStage(time,script=null){if(nativeContent.stage(game.choice))return drawExpandedStage(time,script);
  const week2=SONGS[songIndex].week===2,modern=game.choice.variant==='erect'||game.character==='pico'||game.choice.stage?.endsWith('Erect'),custom=game.modVisuals,beat=game.beat,bpm=bpmAt(game.chart,time),flashAge=time-game.lightningAt;
  const positions=week2?(modern?{dad:[316,614],bf:[967,629],gf:[646,565]}:{dad:[346,637],bf:[831,653],gf:[641,575]}):modern?{dad:[270,629],bf:[973,644],gf:[616,576]}:{dad:[324,609],bf:[1043,639],gf:[688,553]};
@@ -709,6 +770,11 @@ function drawStage(time,script=null){if(nativeContent.stage(game.choice))return 
  if(custom?.stage)drawModStageProps(ctx,assets,custom.stage,{time,pan});
  else if(week2){if(modern){const light=flashAge>=0&&flashAge<1600?Math.max(0,1-flashAge/1600):0;animation('WEEK2_TREES','bgtrees',180-pan*0.8,2,0.75,time,{fps:5,loop:true});image('week2-bgDark',-390-pan,-200,1838,938);if(light)image('week2-bgLight',-390-pan,-200,1838,938,light);}else animation('HALLOWEEN',flashAge>=0&&flashAge<1250?'Halloween lightning':'Halloween idle',-276-pan,-459,0.8,flashAge>=0&&flashAge<1250?flashAge:time,{fps:24,loop:flashAge<0||flashAge>=1250});}
  else if(modern){nativeExtras.drawErectStage(ctx,time,{pan});}else{image('stageback',-234-pan*0.9,-185,1707,960);image('stagefront',-270-pan*0.9,466,1848,305);}
+ if(week2&&modern){
+   ctx.save();
+   const light=flashAge>=0&&flashAge<1600?1-flashAge/1600:0;
+   ctx.filter='brightness('+(.42+light*.58)+')';
+ }
  const drawCustom=(role,actor,position)=>skyPolish.drawActor(ctx,game,role,()=>drawSceneCharacter(role,actor,[position[0]-pan,position[1]],time),{time,mobile:mobileActive()});
  if(!drawCustom('girlfriend',null,positions.gf)){if(game.character==='pico'){const scale=0.62,neneX=positions.gf[0]-195.3-pan,neneY=positions.gf[1]-405.5;drawABot(ctx,assets,audio,{neneX,neneY,scale,time});assets.draw(ctx,'NENE',assets.frame('NENE','Nene idle',settings.reducedMotion?0:partnerDanceFrame(beat,bpm)),neneX,neneY,scale);}else if(modern||week2){const atlas=modern?'GF_DARK':'GF_MODERN',prefix=(modern?'GF dark':'GF modern')+(flashAge>=0&&flashAge<550?' scared':' idle');if(flashAge>=0&&flashAge<550)animation(atlas,prefix,positions.gf[0]-698*0.62/2-pan,positions.gf[1]-637*0.62,0.62,flashAge,{loop:false});else assets.draw(ctx,atlas,assets.frame(atlas,prefix,settings.reducedMotion?0:partnerDanceFrame(beat,bpm)),positions.gf[0]-698*0.62/2-pan,positions.gf[1]-637*0.62,0.62);}else{const frames=assets.frames('GF_assets','GF Dancing Beat0'),idx=settings.reducedMotion?0:partnerDanceFrame(beat,bpm);assets.draw(ctx,'GF_assets',frames[idx],472-pan,158,0.62);}}
  if(!drawCustom('opponent',actorDad,positions.dad)){const id=game.choice.opponent||SONGS[songIndex].opponent||'dad',name=id.includes('monster')?'MONSTER':id.includes('spooky')?(modern?'SPOOKY_DARK':'SPOOKY'):'DADDY_DEAREST',s=name==='DADDY_DEAREST'?0.71:0.7,w=name==='MONSTER'?426:name.startsWith('SPOOKY')?492:426,h=name==='MONSTER'?637:name.startsWith('SPOOKY')?549:767;drawActor(name,actorDad,positions.dad[0]-w*s/2-pan,positions.dad[1]-h*s,s,time);}
@@ -716,6 +782,7 @@ function drawStage(time,script=null){if(nativeContent.stage(game.choice))return 
  const tutorialLight=skyPolish.tutorialLighting(game,time,settings.reducedMotion);
  if(tutorialLight<1)rect(0,0,1280,720,'rgba(0,0,0,'+(1-tutorialLight)+')');
  if(!drawCustom('player',actorBF,positions.bf)){const pico=game.character==='pico',s=pico?0.64:0.66;drawActor(pico?'PICO':'BOYFRIEND',actorBF,positions.bf[0]-(pico?500:412)*s/2-pan,positions.bf[1]-(pico?500:412)*s,s,time);}
+ if(week2&&modern)ctx.restore();
  if(custom?.stage)drawModStageProps(ctx,assets,custom.stage,{foreground:true,time,pan});else if(week2&&modern){image('week2-stairsDark',754.5-pan,-203.75,862.5,937.5);if(flashAge>=0&&flashAge<1600)image('week2-stairsLight',754.5-pan,-203.75,862.5,937.5,Math.max(0,1-flashAge/1600));}else if(!week2&&modern)nativeExtras.drawErectStage(ctx,time,{pan,foreground:true});else if(!week2&&!modern)image('stagecurtains',-250-pan*1.3,-175,1770,624);
  ctx.restore();if(settings.backgroundDim)rect(0,0,1280,720,`rgba(0,0,0,${settings.backgroundDim})`);
 }
@@ -723,13 +790,17 @@ function drawStage(time,script=null){if(nativeContent.stage(game.choice))return 
 function drawGameplay(){
  if(!game)return;const time=game.time,mobile=mobileActive(),down=mobile||settings.downscroll,count=laneCount(),y=receptorY(),sign=down?-1:1,speed=0.45*game.chart.speed*settings.scrollSpeed,playerScale=mobile?(count===6?Math.min(1.4,Math.max(0.85,48*1280/viewportWidth/160)):Math.min(1.7,Math.max(1.02,64*1280/viewportWidth/160))):count===6?0.55:0.7;
  drawStage(time);if(/^philly(?:Streets|Blazin)/.test(game.choice.stage||'')&&!settings.reducedMotion)drawExpandedRain(ctx,Math.max(0,time),game.choice.baseSong==='blazin'?1.15:.8);
+ skyDetails.drawForeground(ctx,game,time,settings.reducedMotion||settings.flashingLights===false);
  if(game.skyTutorialMuted)return;
  const manifestFade=skyPolish.manifestFade(game,time,settings.reducedMotion);
  if(manifestFade)rect(0,0,1280,720,'rgba(0,0,0,'+manifestFade+')');
  const shiftFade=story&&({'wife-forever':336,sky:292,manifest:424}[game.choice.baseSong]);
  if(shiftFade&&game.beat>=shiftFade)rect(0,0,1280,720,'rgba(0,0,0,'+clamp((game.beat-shiftFade)*300/2000,0,1)+')');
  if(game.choice.baseSong==='sky'&&game.choice.variant==='erect'&&game.beat>=224&&game.beat<352){const gradient=ctx.createRadialGradient(640,360,170,640,360,730);gradient.addColorStop(0,'#0000');gradient.addColorStop(1,'#000c');ctx.fillStyle=gradient;ctx.fillRect(0,0,1280,720);}
- const storyFade=rosesFade(SONGS[songIndex].id,{story,variant:game.choice.variant,time});if(storyFade.red&&settings.flashingLights!==false)rect(0,0,1280,720,'rgba(255,27,49,'+storyFade.red+')');ctx.save();ctx.globalAlpha*=storyFade.hud*(game.hudFadeAt?clamp((frameTime-game.hudFadeAt)/2000,0,1):1);if(pixelStage(game.choice))ctx.imageSmoothingEnabled=false;if(settings.strumlineBackground>0){
+ const storyFade=rosesFade(SONGS[songIndex].id,{story,variant:game.choice.variant,time});if(storyFade.red&&settings.flashingLights!==false)rect(0,0,1280,720,'rgba(255,27,49,'+storyFade.red+')');ctx.save();
+ const hudBump=mobile||settings.reducedMotion||settings.cameraZooms===false?0:(game.cameraBump||0)*.65;
+ if(hudBump){ctx.translate(640,360);ctx.scale(1+hudBump,1+hudBump);ctx.translate(-640,-360);}
+ ctx.globalAlpha*=storyFade.hud*(game.hudFadeAt?clamp((frameTime-game.hudFadeAt)/2000,0,1):1);if(pixelStage(game.choice))ctx.imageSmoothingEnabled=false;if(settings.strumlineBackground>0){
     const x=mobile?0:laneX(0,true)-12,w=mobile?1280:laneX(count-1,true)-x+108;
     rect(x,0,w,720,'rgba(0,0,0,'+settings.strumlineBackground+')');
   }else if(settings.middlescroll&&!mobile)rect((1280-count*112)/2,0,count*112,720,'#0003');
@@ -744,19 +815,45 @@ function drawGameplay(){
   for(let lane=0;lane<count;lane++){const until=(player?laneFlashes:opponentFlashes)[lane],confirm=until>frameTime,press=player&&laneHeld(lane);drawNote(lane,laneX(lane,player),mobile&&!player?20:y,mobile&&!player?0.22:playerScale,confirm?'confirm':press?'press':'static',confirm?145-(until-frameTime):0,player?1:0.7);}
   for(let i=game.scanIndex;i<game.notes.length;i++){const n=game.notes[i];if(n.time>time+6000)break;if(n.player!==player||n.hit||n.missed)continue;const pos=notePosition(n);if(pos<-180||pos>850)continue;drawNote(n.lane,laneX(n.lane,player),pos,mobile&&!player?0.22:playerScale,'note',0,player?1:0.7);}
   ctx.restore();}
- for(const p of game.particles){ctx.globalAlpha=clamp(p.life/0.35,0,1);rect(p.x-4,p.y-4,8,8,p.color);}ctx.globalAlpha=1;
+ const splashAtlas=pixelStage(game.choice)?'NATIVE_SPLASH_PIXEL':'NATIVE_SPLASH';
+ game.splashes=game.splashes.filter(splash=>{
+   const color=['purple','blue','green','red'][laneDirection(splash.lane)];
+   const prefix=splashAtlas==='NATIVE_SPLASH_PIXEL'?color+splash.variant:'note impact '+splash.variant+(color==='blue'&&splash.variant===1?'  ':' ')+color;
+   const frames=assets.frames(splashAtlas,prefix),index=Math.floor((frameTime-splash.at)*.024);
+   const frame=frames[index];
+   if(!frame)return false;
+   const scale=splashAtlas==='NATIVE_SPLASH_PIXEL'?1.85:playerScale*.86;
+   assets.draw(ctx,splashAtlas,frame,laneX(splash.lane,true)+56-(frame.frameWidth||frame.width)*scale/2,y+56-(frame.frameHeight||frame.height)*scale/2,scale);
+   return true;
+ });
  comboFeedback.draw(ctx,{time,combo:game.stats.combo,bpm:bpmAt(game.chart,time),pixel:pixelStage(game.choice),botplay:game.botplay,middlescroll:settings.middlescroll,classicCombo:assets.images.combo});
  if(game.rating){const r=game.rating,age=(frameTime-r.since)/1000;if(age<0.7){const alpha=clamp((0.7-age)*4,0,1),rise=settings.reducedMotion?0:age*35;ctx.save();ctx.globalAlpha=alpha;if(pixelStage(game.choice)&&r.name!=='miss'&&pixelUI.rating(ctx,r.name,settings.comboPopup?r.combo:null,290-rise,alpha)){}else if(r.name==='miss')text('MISS',640,310-rise,40,'#d271eb','center');else{const img=assets.images[r.name];image(r.name,640-img.width*0.52/2,290-rise,img.width*0.52,img.height*0.52);if(settings.comboPopup)text(String(r.combo).padStart(3,'0'),640,356-rise,35,'#fff','center');}ctx.restore();}}
  const healthY=down?32:650;rect(338,healthY,604,22,'#000');rect(343,healthY+5,594,12,'#ff0000');const hp=game.stats.health/2;rect(343+594*(1-hp),healthY+5,594*hp,12,'#66ff33');const boundary=343+594*(1-hp),pulse=settings.reducedMotion?1:1+Math.max(0,1-(game.beat%1)*4)*0.1;icon(game.eventHealthIcon?.opponent||game.choice.opponent||'dad',boundary-90*pulse,healthY-28,0.5*pulse,game.stats.health>1.6,false,game.healthIconOptions?.opponent);icon(game.eventHealthIcon?.player||game.choice.characters?.player||(game.character==='pico'?'pico':'bf'),boundary-10,healthY-28,0.5*pulse,game.stats.health<0.4,true,game.healthIconOptions?.player);
  text(mobile?'Score '+game.stats.score+' · Miss '+game.stats.misses+' · '+accuracy(game.stats).toFixed(1)+'%':'Score: '+game.stats.score+'  |  Misses: '+game.stats.misses+'  |  Accuracy: '+accuracy(game.stats).toFixed(2)+'%',640,down?83:690,mobile?Math.max(19,11*1280/viewportWidth):19,'#fff','center',2);
- const remaining=Math.max(0,Math.ceil((game.duration-audio.time())/1000));text(Math.floor(remaining/60)+':'+String(remaining%60).padStart(2,'0'),640,down?5:12,18,'#fff','center',2);text(SONGS[songIndex].name+' - '+DIFFICULTIES[difficulty]+' / '+count+'K',15,mobile?695:down?690:14,mobile?14:16,'#ddd','left',2);
+ const remaining=Math.max(0,Math.ceil((game.duration-audio.time())/(1000*game.modifiers.rate)));text(Math.floor(remaining/60)+':'+String(remaining%60).padStart(2,'0'),640,down?5:12,18,'#fff','center',2);text(SONGS[songIndex].name+' - '+DIFFICULTIES[difficulty]+' / '+count+'K',15,mobile?695:down?690:14,mobile?14:16,'#ddd','left',2);
  if(game.practice||game.botplay)text(game.botplay?'BOTPLAY':'PRACTICE MODE',640,down?115:172,25,'#fff','center');const beatms=60000/game.chart.bpm;if(time<0){const name={[-3]:'ready',[-2]:'set',[-1]:'go'}[Math.floor(time/beatms)];if(name&&!(pixelStage(game.choice)&&pixelUI.countdown(ctx,Math.floor(time/beatms)))){const img=assets.images[name];image(name,640-img.width*0.65/2,360-img.height*0.65/2,img.width*0.65,img.height*0.65);}}
  if(!mobile)for(let lane=0;lane<count;lane++)newButton('lane-'+lane,laneLabel(lane)+' note ('+keyLabel(playKeys()[lane])+')',laneX(lane,true),180,count===6?88:112,440,()=>{}, {lane});
- newButton('pause','Pause game',1180,0,100,88,pauseGame);text('II',1248,18,27,'#fff','center',2);ctx.restore();
+ newButton('pause','Pause game',1180,0,100,88,pauseGame);text('II',1248,18,27,'#fff','center',2);ctx.restore();drawSongCredits(time);
 }
 
 function drawPaused(){drawGameplay();buttons=[];rect(0,0,1280,720,'#000b');text(SONGS[songIndex].name,1255,22,32,'#fff','right');text(DIFFICULTIES[difficulty],1255,65,25,'#ddd','right');['resume','restart song','options','exit to menu'].forEach((label,i)=>{const y=145+i*125;letters(label,selected===i?160:110,y,1.04,{alpha:selected===i?1:0.55});newButton('pause-'+i,label,90,y-18,950,105,()=>{selected=i;choosePaused();},{select:i});});footer('UP / DOWN: SELECT      ENTER: CONFIRM      ESC: RESUME');}
 function choosePaused(){if(selected===0)resumeGame();if(selected===1)retrySong();if(selected===2)openSettings('paused');if(selected===3)exitSong();}
+let nativeCredits={};
+function drawSongCredits(time){
+  const age=time-game.startTime;
+  if(age<0||age>4900)return;
+  const choice=game.choice,id=choice.baseSong||SONGS[songIndex].id;
+  const credits=nativeCredits[id+':'+(choice.variant||'')]||nativeCredits[id]||{};
+  const progress=settings.reducedMotion?1:clamp(Math.min(age/480,(4900-age)/450),0,1);
+  const x=1280-390*(1-(1-progress)**3),y=game.choice.baseSong==='blazin'?164:184;
+  const values=[(choice.name||SONGS[songIndex].name)+' ('+DIFFICULTIES[difficulty]+')',...(choice.artist||credits.artist?['Artist · '+(choice.artist||credits.artist)]:[]),
+    ...(choice.charter||credits.charter?['Charter · '+(choice.charter||credits.charter)]:[])];
+  ctx.save();ctx.translate(x,y);ctx.fillStyle='#111c';ctx.fillRect(0,0,390,45+30*(values.length-1));
+  ctx.fillStyle='#d470c4';ctx.fillRect(0,0,5,45+30*(values.length-1));
+  ctx.font='21px VCR, monospace';ctx.fillStyle='#fff';ctx.textBaseline='top';
+  values.forEach((value,index)=>ctx.fillText(value,14,15+30*index,362));ctx.restore();
+}
+
 function drawGameOver(){rect(0,0,1280,720,'#000');const elapsed=frameTime-sceneAt,pico=game?.character==='pico',death=deathConfig(),deathTime=death.duration;ctx.save();if(death.character?.animationMap?.firstDeath){nativeContent.drawCharacter(ctx,death.id,null,{x:640,y:620,scale:pixelStage(game.choice)?0.85:0.86,time:elapsed,player:true,globalOffsets:game.choice.baseSong!=='blazin',animation:naughtyAnimation(death.id,game.retryAt?'deathConfirm':elapsed<deathTime?'firstDeath':'deathLoop',settings.naughtyness!==false,death.character.animationMap),animationTime:game.retryAt?frameTime-game.retryAt:elapsed<deathTime?elapsed:elapsed-deathTime});}else animation(pico?'PICO':'BOYFRIEND',pico?(elapsed<deathTime?'Pico dies':'Pico Dead Loop'):(elapsed<deathTime?'BF dies':'BF Dead Loop'),pico?425:485,210,0.86,elapsed<deathTime?elapsed:elapsed-deathTime,{loop:elapsed>=deathTime});ctx.restore();if(elapsed>1100){if(!death.pixel)letters('retry',640,100,1.4,{align:'center'});text('ENTER TO RETRY',640,618,30,'#fff','center');text('ESC TO RETURN',640,669,20,'#999','center');newButton('retry','Retry song',0,0,1280,640,retrySong);newButton('gameover-exit','Return to menu',380,648,520,70,exitSong);}}
 
 function drawResults(){if(nativeResults.started){const targets=nativeResults.draw(ctx,{now:frameTime,volume:settings.volume,hints:true});for(const target of targets)newButton(target.id,target.label,target.x,target.y,target.w,target.h,()=>{if(target.action==='replay')startSong(story?weekStart():songIndex,story);else enter(story?'story':'freeplay',story?0:songIndex);});return;}menuBackground('menuBGBlue');rect(95,40,1090,635,'#000c');letters(story?'week clear':'song clear',640,69,1.05,{align:'center'});text(story?'WEEK '+WEEKS[storyWeek].id+' — '+WEEKS[storyWeek].name:SONGS[songIndex].name.toUpperCase(),640,168,30,'#ffde5e','center');const stats=story?combinedStats():game.stats;const rows=[['SCORE',story?storyTotal:stats.score],['ACCURACY',accuracy(stats).toFixed(2)+'%'],['MAX COMBO',stats.maxCombo],['MISSES',stats.misses],['RANK',rank(stats)]];rows.forEach(([label,value],i)=>{text(label,320,235+i*56,29,'#bbb');text(String(value),960,235+i*56,32,'#fff','right');});text(`SICK ${stats.judgements.sick}    GOOD ${stats.judgements.good}    BAD ${stats.judgements.bad}    SHIT ${stats.judgements.shit}`,640,537,20,'#ddd','center');if(game.practice||game.botplay)text('PRACTICE / AUTOPLAY — SCORE NOT SAVED',640,581,20,'#ffda60','center');text('ENTER: CONTINUE     R: PLAY AGAIN',640,624,25,'#fff','center');newButton('results-continue','Continue to song selection',170,600,625,70,()=>{audio.stopMenu();enter(story?'story':'freeplay',story?0:songIndex);});newButton('results-replay','Play again',840,600,300,70,()=>startSong(story?weekStart():songIndex,story));}
@@ -806,7 +903,7 @@ function runInput(code,device,event=null){
     else if(matches('uiDown'))characterSelect.move(0,1,now);
     return;
   }
-  if(isKey&&scene==='menu'&&/^Key[A-Z]$/.test(code)){
+  if(isKey&&['menu','freeplay'].includes(scene)&&/^Key[A-Z]$/.test(code)){
     skySecret=(skySecret+code.at(-1)).slice(-3);
     if(skySecret==='SKY'){stop();skySecret='';launchSkySecret();return;}
   }
@@ -868,10 +965,10 @@ function tick(timestamp){const bounds=canvas.getBoundingClientRect();viewportWid
   if(scene==='play'&&game&&lastFrame&&game.time>1000){game.frameTimes.push(timestamp-lastFrame);if(game.frameTimes.length>180)game.frameTimes.shift();}
   if(game&&Math.floor(timestamp/1000)!==Math.floor(lastFrame/1000)){const times=[...game.frameTimes].sort((a,b)=>a-b);canvas.dataset.frameP95=String(Math.round(times[Math.floor(times.length*0.95)]||0));canvas.dataset.frameMax=String(Math.round(times.at(-1)||0));canvas.dataset.character=game.character;canvas.dataset.level=game.choice.level;canvas.dataset.bpm=String(bpmAt(game.chart,game.time));canvas.dataset.lanes=String(game.laneCount);canvas.dataset.mobile=String(mobileActive());}
   gamepads.poll(gamepadInput);if(scene==='play')updateGame(dt);
-  ctx.clearRect(0,0,1280,720);switch(scene){case'title':drawTitle();break;case'menu':drawMenu();break;case'story':drawStory();break;case'freeplay':drawFreeplay();break;case'character':drawCharacterSelect();break;case'instrumental':drawInstrumental();break;case'album':drawAlbum();break;case'settings':drawSettings();break;case'credits':drawCredits();break;case'loading':drawLoading();break;case'result-loading':rect(0,0,1280,720,'#000');letters('results',640,300,1.4,{align:'center'});break;case'intro':drawStorySequence();break;case'cutscene':drawExpandedSequence();break;case'gallery':drawSkyGallery();break;case'patch-notes':drawPatchNotes();break;case'play':drawGameplay();break;case'paused':drawPaused();break;case'gameover':drawGameOver();break;case'results':drawResults();break;}
+  ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';ctx.filter='none';ctx.clearRect(0,0,1280,720);switch(scene){case'title':drawTitle();break;case'menu':drawMenu();break;case'story':drawStory();break;case'freeplay':drawFreeplay();break;case'character':drawCharacterSelect();break;case'instrumental':drawInstrumental();break;case'album':drawAlbum();break;case'settings':drawSettings();break;case'credits':drawCredits();break;case'loading':drawLoading();break;case'result-loading':rect(0,0,1280,720,'#000');letters('results',640,300,1.4,{align:'center'});break;case'intro':drawStorySequence();break;case'cutscene':drawExpandedSequence();break;case'gallery':drawSkyGallery();break;case'patch-notes':drawPatchNotes();break;case'play':drawGameplay();break;case'paused':drawPaused();break;case'gameover':drawGameOver();break;case'results':drawResults();break;}
   const interval=timestamp-lastFrame||16.67;
   drawDebugDisplay(ctx,settings,{fps:Math.round(1000/Math.max(1,interval)),frameMs:interval,scene,songTime:game?.time});
   sceneTransitions.draw(ctx,timestamp);if(transition>0){transition=Math.max(0,transition-dt);rect(0,0,1280,720,`rgba(0,0,0,${transition/0.22})`);}syncButtons();if(Math.floor(timestamp/250)!==Math.floor(lastFrame/250)){canvas.dataset.scene=scene;canvas.dataset.song=SONGS[songIndex].id;canvas.dataset.time=String(Math.round(game?.time||0));canvas.dataset.score=String(game?.stats.score||0);canvas.dataset.misses=String(game?.stats.misses||0);canvas.dataset.duration=String(Math.round(game?.duration||0));canvas.dataset.audioState=audio.ctx?.state||'idle';canvas.dataset.preview=fp.previewing?'playing':'idle';canvas.dataset.resultRank=scene==='results'?(nativeResults.rank||''):'';canvas.dataset.mode=game?.botplay?'autoplay':game?.practice?'practice':'standard';}lastFrame=timestamp;scheduleFrame();
 }
-async function boot(){const status=document.querySelector('#boot-status'),progress=document.querySelector('#boot-progress'),retry=document.querySelector('#boot-retry');try{retry.hidden=true;await Promise.all([nativeContent.load(),nativeExtras.load('picoCard'),assets.load(n=>{progress.value=Math.round(n*65);}),modernFreeplay.load(n=>{if(n===1)progress.value=100;}),fetch('variant-catalog.json').then(r=>r.json()).then(c=>{variantCatalog=c.variants;baseSongCatalog=c.baseSongs||[];if(!DIFFICULTIES.includes('Erect'))DIFFICULTIES.push('Erect','Nightmare');})]);await Promise.all([expandedContent.load(),expandedCutscenes.load(),loadExpandedMenu()]);for(const song of expandedContent.entries(builtinSongs))if(!builtinSongs.some(old=>old.id===song.id))builtinSongs.push(song);await modLibrary.init();refreshMods();for(const [atlas,frames] of Object.entries(assets.atlases)){for(const prefix of new Set(frames.filter(f=>f.name).map(f=>f.name.replace(/\d+$/,''))))assets.frames(atlas,prefix);}document.querySelector('#boot').hidden=true;canvas.focus();audio.playMenu();scheduleFrame();if(!renderWatchdog)renderWatchdog=setInterval(()=>{const now=performance.now();if(!document.hidden){const gap=now-lastFrame;if(gap>40)fallbackUntil=now+1500;if(gap>14&&now<fallbackUntil)tick(now);}},16);announce('Friday Night Funkin. Press Enter to begin.');}catch(e){console.error(e);status.textContent='Could not load the game. Serve this folder over HTTP and try again.';retry.hidden=false;retry.onclick=boot;}}
+async function boot(){const status=document.querySelector('#boot-status'),progress=document.querySelector('#boot-progress'),retry=document.querySelector('#boot-retry');try{retry.hidden=true;await Promise.all([nativeContent.load(),nativeExtras.load('picoCard'),assets.load(n=>{progress.value=Math.round(n*65);}),modernFreeplay.load(n=>{if(n===1)progress.value=100;}),fetch('variant-catalog.json').then(r=>r.json()).then(c=>{variantCatalog=c.variants;baseSongCatalog=c.baseSongs||[];if(!DIFFICULTIES.includes('Erect'))DIFFICULTIES.push('Erect','Nightmare');})]);await Promise.all([expandedContent.load(),expandedCutscenes.load(),loadExpandedMenu(),expandedJSON('song-credits.json').then(data=>nativeCredits=data).catch(()=>{})]);for(const song of expandedContent.entries(builtinSongs))if(!builtinSongs.some(old=>old.id===song.id))builtinSongs.push(song);await modLibrary.init();refreshMods();for(const [atlas,frames] of Object.entries(assets.atlases)){for(const prefix of new Set(frames.filter(f=>f.name).map(f=>f.name.replace(/\d+$/,''))))assets.frames(atlas,prefix);}document.querySelector('#boot').hidden=true;canvas.focus();audio.playMenu();scheduleFrame();if(!renderWatchdog)renderWatchdog=setInterval(()=>{const now=performance.now();if(!document.hidden){const gap=now-lastFrame;if(gap>40)fallbackUntil=now+1500;if(gap>14&&now<fallbackUntil)tick(now);}},16);announce('Friday Night Funkin. Press Enter to begin.');}catch(e){console.error(e);status.textContent='Could not load the game. Serve this folder over HTTP and try again.';retry.hidden=false;retry.onclick=boot;}}
 boot();

@@ -37,6 +37,7 @@ export const PREFERENCE_DEFAULTS = Object.freeze({
   hideMouse: true, fancyPreview: true, previewOnSave: true,
   comboPopup: true, comboSwoosh: true, comboSwooshSound: true, comboSwooshThreshold: 0,
   cacheComboAssets: true, normalShaders: false, skyDisableMenus: false,
+  songRate:1, healthDrain:0, missDamage:1, instantFail:false, mirrorNotes:false, noFail:false,
   qtLanguage: 'english', qtSawbladeMode: 'default', qtPlushieButton: true,
 });
 
@@ -51,7 +52,7 @@ export function normalizePreferences(raw = {}, base = {}) {
   for (const [key, fallback] of Object.entries(PREFERENCE_DEFAULTS)) {
     if (typeof fallback === 'boolean' && typeof raw[key] === 'boolean') result[key] = raw[key];
   }
-  for (const [key, min, max] of [['strumlineBackground', 0, 1], ['debugDisplayBG', 0, 1], ['comboSwooshThreshold', 0, 300]]) {
+  for (const [key, min, max] of [['strumlineBackground', 0, 1], ['debugDisplayBG', 0, 1], ['comboSwooshThreshold', 0, 300], ['songRate', .5, 2], ['healthDrain', 0, .1], ['missDamage', .25, 3]]) {
     result[key] = limitNumber(raw, key, result[key], min, max);
   }
   result.offset = limitNumber(raw, 'offset', base.offset || 0, -1500, 1500);
@@ -405,8 +406,17 @@ export class PreferencesMenu {
   }
 
   rows() {
-    if (this.page === 'root') return [...ROOT_PAGES.map(([page, label]) => action(label, () => this.openPage(page))), action('Exit', () => this.back())];
+    if (this.page === 'root') return [...(this.paused?ROOT_PAGES:[...ROOT_PAGES,['modifiers','Modifiers']]).map(([page, label]) => action(label, () => this.openPage(page))), action('Exit', () => this.back())];
     if (this.page === 'preferences') return PREFERENCES.filter(row => (!row.capability || this.capabilities[row.capability]) && (!this.paused || !['keyMode','practice','botplay'].includes(row.key)));
+    if (this.page === 'modifiers') return [
+      number('songRate','Song Speed','Changes audio and chart speed together.',.5,2,.05,percent),
+      number('healthDrain','Health Drain','Health lost per second while the song plays.',0,.1,.005,percent),
+      number('missDamage','Miss Damage','Multiplier for health lost on a miss.',.25,3,.25,percent),
+      flag('instantFail','Instakill','Any missed note or hold ends the run.'),
+      flag('mirrorNotes','Mirror Notes','Reverses the note lanes on both sides.'),
+      flag('noFail','No Fail','Keep playing at zero health.'),
+      action('Reset Modifiers',()=>{for(const key of ['songRate','healthDrain','missDamage','instantFail','mirrorNotes','noFail'])this.change(key,PREFERENCE_DEFAULTS[key]);}),
+    ];
     if (this.page === 'rewired') return [...REWIRED.filter(row => this.capabilities[row.capability]), action('Exit', () => this.back())];
     if (this.page === 'sky') return [flag('skyDisableMenus', 'Disable Menus', 'Revert the title and main menu to the original game style.'), action('Exit', () => this.back())];
     if (this.page === 'lag') return [number('offset','Offset (Global)','Adjust the timing offset in milliseconds.',-1500,1500,1), action('Reset Offset',() => this.change('offset',0)), action('Offset Calibration',() => this.beginLag('calibrate')), action('Test',() => this.beginLag('test'))];
@@ -683,6 +693,15 @@ export class PreferencesMenu {
       }
     });
     if (!centered) this.description(ctx, rows[this.selected]?.description);
+    if (this.page === 'modifiers') return [
+      number('songRate','Song Speed','Changes audio and chart speed together.',.5,2,.05,percent),
+      number('healthDrain','Health Drain','Health lost per second while the song plays.',0,.1,.005,percent),
+      number('missDamage','Miss Damage','Multiplier for health lost on a miss.',.25,3,.25,percent),
+      flag('instantFail','Instakill','Any missed note or hold ends the run.'),
+      flag('mirrorNotes','Mirror Notes','Reverses the note lanes on both sides.'),
+      flag('noFail','No Fail','Keep playing at zero health.'),
+      action('Reset Modifiers',()=>{for(const key of ['songRate','healthDrain','missDamage','instantFail','mirrorNotes','noFail'])this.change(key,PREFERENCE_DEFAULTS[key]);}),
+    ];
     if (this.page === 'rewired') type(ctx, 'QT: Rewired v2.1.0', 10, 690, 16, {align: 'left', outline: 1});
   }
 

@@ -18,8 +18,11 @@ const EXPANDED_SCENES={
 
 const sceneCaption=(song,naughtyness)=>'subtitles-data-subtitles-skyplayable-'+song+'-sky'+(naughtyness?'':'-censored')+'.srt';
 const clamp01=value=>Math.max(0,Math.min(1,value));
+export const rollSkyPicoShot=(random=Math.random)=>random()<1/10000;
 
 function skyStageScene(id,{naughtyness,subtitles,alternate}) {
+  if(id==='sky-mobile-outro')return {polish:true,duration:15500,fadeIn:0,animations:['mobileSky'],
+    atlases:['mobileSmoke'],sounds:[[1000,'wooshSound'],[3050,'smokinSound'],[3050,'puffySound'],[5000,'wobbly',.4]]};
   if(id==='ugh-sky-stage'||id==='guns-sky-stage'){
     const guns=id==='guns-sky-stage',song=guns?'guns':'ugh';
     return {
@@ -90,6 +93,12 @@ const darnellCamera=[
 
 function scriptStageView(id,elapsed,{art,alternate,naughtyness}){
   const hiddenPair=['player','opponent'];
+  if(id==='sky-mobile-outro')return {
+    hideProps:['babyGradient'],camera:[[0,['opponent',110,50,.85],1000,'sineOut']],
+    actors:[{role:'opponent',asset:art.mobileSky,label:elapsed<12000?'smoke':'high loop',
+      age:Math.max(0,elapsed-(elapsed<12000?1000:12000)),offset:[-208,-620],loop:elapsed>=12000}],
+    smoke:elapsed>=3050&&elapsed<7000?{art:art.mobileSmoke,age:elapsed-3050}:null,
+  };
   if(id==='darnell-alley')return {camera:darnellCamera};
   if(id==='sky-pico-stage'){
     const skyCue=elapsed>=7100?7100:elapsed>=5700?5700:1100;
@@ -146,7 +155,7 @@ function scriptStageView(id,elapsed,{art,alternate,naughtyness}){
     const lift=rise===0?0:1090*Math.pow(2,10*(rise-1));
     return {camera:[[0,['opponent',-100,50,.5]],[2050,['girlfriend',0,50,.6],550,'quadOut'],
       [3250,['girlfriend',0,-50,.6],700,'quadOut'],[8000,['girlfriend',0,100,.5],1000,'quadOut']],
-      actorOffsets:{girlfriend:[0,-lift]},hideActors:elapsed>=4450?['girlfriend']:[]};
+      actorOffsets:{girlfriend:[0,-lift]},propOffsets:{rocket:[0,-lift]},showProps:elapsed<4450?['rocket']:[],hideProps:elapsed>=4450?['rocket']:[],hideActors:elapsed>=4450?['girlfriend']:[]};
   }
   return {};
 }
@@ -179,6 +188,7 @@ export function expandedIntro(choice,{story=false,retry=false,editor=false}={}) 
 }
 
 export function expandedOutro(choice,story,{manifestLiquid='water'}={}) {
+  if(choice.baseSong==='sky-mobile'||choice.id==='sky-mobile')return 'sky-mobile-outro';
   if(choice.baseSong==='stress'&&choice.variant==='pico')return 'stress-pico-outro';
   if(choice.baseSong==='manifest'&&choice.variant==='pico'&&manifestLiquid!=='boiling')return 'manifest-pico-outro';
   if (!story) return null;
@@ -202,7 +212,7 @@ export class ExpandedCutscenes {
     if (response.ok) this.media = await response.json();
   }
 
-  begin(id,{volume=0.7,misses=0,extraArt={},naughtyness=false,subtitles=true,alternate=Math.random()<.1,sfx=()=>{}}={}) {
+  begin(id,{volume=0.7,misses=0,extraArt={},naughtyness=false,subtitles=true,alternate=id==='sky-pico-stage'&&rollSkyPicoShot(),sfx=()=>{}}={}) {
     const entry = id==='2hot-alley-outro'&&this.media['2hotCutscene']
       ?{...this.media['2hotCutscene'],stageBeforeVideo:6000}
       :this.media[id]||skyStageScene(id,{naughtyness,subtitles,alternate});

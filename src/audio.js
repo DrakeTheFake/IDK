@@ -1,5 +1,5 @@
 export class AudioEngine {
-  constructor(settings){this.settings=settings;this.cache=new Map();this.effects=new Map();this.sources=[];this.menu=null;this.menuFile='';this.position=0;this.running=false;this.ctx=null;this.buffers=null;this.trackOffsets=[];this.trackRoles=[];this.musicURLs=new Set();this.allowVoices=true;}
+  constructor(settings){this.settings=settings;this.cache=new Map();this.effects=new Map();this.sources=[];this.menu=null;this.menuFile='';this.position=0;this.running=false;this.ctx=null;this.buffers=null;this.trackOffsets=[];this.trackRoles=[];this.musicURLs=new Set();this.allowVoices=true;this.songRate=1;this.stemGains=[];}
   async unlock(){
     if(!this.ctx){this.ctx=new(window.AudioContext||window.webkitAudioContext)();this.master=this.ctx.createGain();this.master.connect(this.ctx.destination);this.analyser=this.ctx.createAnalyser();this.analyser.fftSize=256;this.analyser.minDecibels=-65;this.analyser.maxDecibels=-25;this.analyser.smoothingTimeConstant=0.72;this.analyser.connect(this.master);this.frequencyData=new Uint8Array(this.analyser.frequencyBinCount);this.music=this.ctx.createGain();this.music.connect(this.analyser);this.voices=this.ctx.createGain();this.voices.connect(this.analyser);this.fx=this.ctx.createGain();this.fx.connect(this.master);this.updateVolume();}
     if(this.ctx.state==='suspended')await this.ctx.resume();
@@ -67,12 +67,21 @@ export class AudioEngine {
   spectrum(){if(this.analyser&&this.running)this.analyser.getByteFrequencyData(this.frequencyData);return this.frequencyData||new Uint8Array(128);}
   start(position=0){
     this.stopSources();this.stopPreview();this.stopMenu();this.position=position;this.clockStart=this.ctx.currentTime;this.running=true;this.music.gain.value=1;this.voices.gain.cancelScheduledValues(this.ctx.currentTime);this.voices.gain.value=this.allowVoices?1:0;
-    this.sources=this.buffers.map((buffer,i)=>{const s=this.ctx.createBufferSource();s.buffer=buffer;s.connect(i===0||this.trackRoles[i]==='opponent'&&this.allowVoices?this.music:this.voices);const trackOffset=(this.trackOffsets[i]||0)/1000,relative=position/1000-trackOffset,delay=Math.max(0,-relative),offset=Math.max(0,relative);if(offset<buffer.duration)s.start(this.ctx.currentTime+delay,offset);return s;});
+    this.stemGains=[];
+    this.sources=this.buffers.map((buffer,i)=>{const s=this.ctx.createBufferSource();s.buffer=buffer;s.playbackRate.value=this.songRate;const level=this.ctx.createGain();level.gain.value=this.mutedRoles?.has(this.trackRoles[i])?0:1;s.connect(level);level.connect(i===0||this.trackRoles[i]==='opponent'&&this.allowVoices?this.music:this.voices);this.stemGains.push(level);const trackOffset=(this.trackOffsets[i]||0)/1000,relative=position/1000-trackOffset,delay=Math.max(0,-relative),offset=Math.max(0,relative);if(offset<buffer.duration)s.start(this.ctx.currentTime+delay/this.songRate,offset);return s;});
   }
-  time(){return this.running?this.position+(this.ctx.currentTime-this.clockStart)*1000:this.position;}
+  time(){return this.running?this.position+(this.ctx.currentTime-this.clockStart)*1000*this.songRate:this.position;}
   pause(){if(!this.running)return;this.position=this.time();this.running=false;this.stopSources();}
   resume(){this.start(this.position);}
-  stopSources(){for(const s of this.sources){try{s.stop();}catch{}s.disconnect();}this.sources=[];}
+  stopSources(){for(const s of this.sources){try{s.stop();}catch{}s.disconnect();}this.sources=[];for(const gain of this.stemGains)gain.disconnect();this.stemGains=[];}
   stop(){this.position=0;this.running=false;this.stopSources();}
+  muteRole(role,muted){
+    this.mutedRoles??=new Set();
+    if(this.mutedRoles.has(role)===muted)return;
+    if(muted)this.mutedRoles.add(role);else this.mutedRoles.delete(role);
+    for(const [i,level] of this.stemGains.entries()){
+      if(this.trackRoles[i]===role)level.gain.setTargetAtTime(muted?0:1,this.ctx.currentTime,.015);
+    }
+  }
   muteVoices(muted){if(this.voices)this.voices.gain.setTargetAtTime(muted||!this.allowVoices?0:1,this.ctx.currentTime,0.015);}
 }

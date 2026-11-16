@@ -21,7 +21,7 @@ export function loadSkyPolishPack(){
 }
 
 export function drawSkyAnimation(ctx,asset,time,x,y,{scale=1,label,loop=false,normalize=false}={}){
-  if(!asset)return;
+  if(!asset?.timeline||!asset.image)return;
   const {timeline,image}=asset;
   const [first,length]=timeline.labels[label]||[0,timeline.frames.length];
   if(!length)return;
@@ -57,7 +57,7 @@ function startSound(audio,buffer,gain=1){
   const source=audio.ctx.createBufferSource();
   source.buffer=buffer;
   const level=audio.ctx.createGain();
-  level.gain.value=gain;
+  level.gain.value=Math.min(1,gain);
   source.connect(level);
   level.connect(audio.fx);
   source.onended=()=>{source.disconnect();level.disconnect();};
@@ -67,20 +67,6 @@ function startSound(audio,buffer,gain=1){
 function beatTime(chart,beat){
   const tempo=chart.tempos.findLast(change=>change.beat<=beat);
   return tempo.time+(beat-tempo.beat)*60000/tempo.bpm;
-}
-
-function setManifestTrackMuted(game,audio,role,muted){
-  game.manifestMutedSources??=new WeakSet();
-  for(const [index,source] of audio.sources.entries()){
-    if(audio.trackRoles[index]!==role)continue;
-    if(muted&&!game.manifestMutedSources.has(source)){
-      source.disconnect();
-      game.manifestMutedSources.add(source);
-    }else if(!muted&&game.manifestMutedSources.has(source)){
-      source.connect(role==='opponent'?audio.music:audio.voices);
-      game.manifestMutedSources.delete(source);
-    }
-  }
 }
 
 export class SkyPolish {
@@ -197,7 +183,7 @@ export class SkyPolish {
   drawProp(ctx,game,prop,draw,{time=0,mobile=false,worldScale=0.72,originY=-70,reducedMotion=false}={}){
     if(isManifest(game.choice)){
       const {name}=prop;
-      if(name==='rocket'||name==='crucifixBlock'&&game.choice.variant==='pico')return;
+      if(name==='rocket'&&!prop.alpha||name==='crucifixBlock'&&game.choice.variant==='pico')return;
       if(name==='gradientTop'||name==='gradientBottom'){
         ctx.save();
         if(mobile&&game.choice.stage.endsWith('Erect'))ctx.filter='hue-rotate(-97deg)';
@@ -253,21 +239,21 @@ export class SkyPolish {
     return true;
   }
 
-  updateManifest(game,time,{audio,actors}){
+  updateManifest(game,time,{audio,actors,random=Math.random}){
     if(!isManifestPico(game.choice)||game.custom||game.beat<148)return;
     game.skyManifestBlock=game.beat<168;
     if(game.beat>=160&&game.skyManifestAt==null){
       game.skyManifestAt=beatTime(game.chart,160);
-      game.skyManifestLiquid=Math.random()<.1?'boiling':'water';
+      game.skyManifestLiquid=random()<.1?'boiling':'water';
       const boiling=game.skyManifestLiquid==='boiling';
       game.skyManifestCues=[
         [0,'runYoPockets','player','cupThrow',1700],
         [700,'waterThrow','opponent',boiling?null:'drenched',1900,2],
         [1000,'waterSplat','opponent',boiling?'burning':'angry',boiling?800:1600],
-        [1000,'demonAngry'],[1000,'skyYell'],
+        [1000,'demonAngry'],
         [1800,'flexatone',null,null,0,.71],[1850,'cupHittinTheGround'],
       ];
-      if(boiling)game.skyManifestCues.push([1800,null,'opponent','falling',1960],[2350,'steamyHiss']);
+      if(boiling)game.skyManifestCues.push([1000,'skyYell'],[1800,null,'opponent','falling',1960],[2350,'steamyHiss']);
       game.skyManifestCues.sort((a,b)=>a[0]-b[0]);
     }
     if(game.skyManifestAt!=null){
@@ -287,8 +273,8 @@ export class SkyPolish {
       game.skyManifestRaspberry=true;
       startSound(audio,this.manifestSounds?.picoRaspberry);
     }
-    setManifestTrackMuted(game,audio,'player',game.skyManifestBlock);
-    setManifestTrackMuted(game,audio,'opponent',game.beat>=160&&(game.skyManifestBlock||game.skyManifestLiquid==='boiling'));
+    audio.muteRole('player',game.skyManifestBlock);
+    audio.muteRole('opponent',game.beat>=160&&(game.skyManifestBlock||game.skyManifestLiquid==='boiling'));
   }
 
   tutorialHidesPlayer(game,time){
