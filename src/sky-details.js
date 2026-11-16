@@ -168,15 +168,18 @@ export class SkyDetails {
     const age=time-shot.time;
     if(age<0)return;
     const index=Math.floor(age*.024),frame=this.flashes.lanes[shot.lane][index];
-    if(!frame)return;
-    const offsets=[[-90,360],[900,140],[-90,400],[900,270]];
-    const [dx,dy]=offsets[shot.lane], [originX,originY]=config.normalizedNativeOrigin;
+    if(!frame?.width||!frame.height)return;
+    // Can nozzles in the normalized character poses and matching attachment
+    // points in the native, untrimmed four-direction effect frames.
+    const [nozzleX,nozzleY]=[[10,698],[796,675],[46,789],[786,769]][shot.lane];
+    const [flashX,flashY]=[[290,216],[88,358],[376,260],[306,332]][shot.lane];
     const [width,height]=config.logicalIdleSize,[globalX,globalY]=config.globalOffsets;
-    const x=position[0]+(-width/2+globalX-originX+dx-(frame.frameX||0))*scale;
-    const y=position[1]+(-height+globalY-originY+dy-(frame.frameY||0))*scale;
+    const effectScale=.66;
+    const x=position[0]+(-width/2+globalX+nozzleX-(flashX+(frame.frameX||0))*effectScale)*scale;
+    const y=position[1]+(-height+globalY+nozzleY-(flashY+(frame.frameY||0))*effectScale)*scale;
     ctx.save();
     if(index<2&&flashing)ctx.globalCompositeOperation='lighter';
-    ctx.drawImage(this.flashes.image,frame.x,frame.y,frame.width,frame.height,x,y,frame.width*scale,frame.height*scale);
+    ctx.drawImage(this.flashes.image,frame.x,frame.y,frame.width,frame.height,x,y,frame.width*scale*effectScale,frame.height*scale*effectScale);
     ctx.restore();
   }
 
