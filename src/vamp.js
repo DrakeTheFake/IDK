@@ -79,7 +79,7 @@ export function vampSceneActors(id, art){
     [0,['opponent',200,0,.70]],[1,['opponent',-100,5,.80],2000,'quadInOut'],
     [5350,['opponent',-100,5,.60],2000,'circOut'],
   ],actors:[
-    {role:'opponent',art:art.vamp,at:0,offset:[115,-125]},
+    {role:'opponent',art:art.vamp,at:0,offset:[115,0],grounded:true},
     {role:'player',art:art.bf,at:0,offset:[30,60]},
     {role:'girlfriend',art:art.gf,at:0,offset:[10,0]},
   ]};

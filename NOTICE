@@ -73,3 +73,8 @@ CC BY 4.0 and MIT; creator and contributor credits are preserved in
 assets/expanded/vamp-credits.json and in the song catalogue. The Guns Erect
 chart and recording are sourced from Blake Expansion, with individual song
 credits retained in assets/expanded/songs.json.
+
+QT: Rewired 2.1.1 by JoaDash, FatzFries and contributors uses the installed
+V-Slice package from https://gamebanana.com/mods/566597. The original package
+lists CC BY 4.0 and MIT. Its contributor credits are preserved in
+assets/expanded/qt-rewired-credits.json.

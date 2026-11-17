@@ -132,7 +132,7 @@ export class SkyDetails {
   }
 
   chartPose(game,role,name){
-    if(game.choice.baseSong==='blissful'){
+    if(game.choice.baseSong==='blissful'&&game.choice.source!=='qt-rewired'){
       if(name==='preDance'){
         game.animationSuffix??={};
         game.animationSuffix[role]={idle:role==='player'?'-caramel':'-alt',dance:true};

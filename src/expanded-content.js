@@ -3,7 +3,9 @@ export const EXPANDED_WEEKS = [
   {id:7, name:'TANKMAN FT. JOHNNYUTAH', songs:['ugh','guns','stress'], color:'#f9cf51', character:'bf'},
   {id:'weekend1', name:'DUE DEBTS', songs:['darnell','lit-up','2hot','blazin'], color:'#413cae', character:'pico'},
   {id:'sky', name:'BFSWIFEFOREVER', songs:['wife-forever','sky','manifest'], color:'#52bfff', character:'bf'},
-  {id:'vamp', name:'VIOLENT VAMPIRE VASECTOMY', songs:['vamp','violent','vivacious'], color:'#a91735', character:'bf'}
+  {id:'vamp', name:'VIOLENT VAMPIRE VASECTOMY', songs:['vamp','violent','vivacious'], color:'#a91735', character:'bf'},
+  {id:'QTWeek',name:'YOUR FAVORITE ROBOT',songs:['blissful','obliterated'],color:'#ff7ec8',character:'bf'},
+  {id:'CG5Collab',name:"ROCKIN' THEM BEATS",songs:['go-go-go'],color:'#ff2882',character:'bf'}
 ];
 
 export function playerIdentity(id='') {

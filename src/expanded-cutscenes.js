@@ -244,6 +244,9 @@ export class ExpandedCutscenes {
       current.effects=[...entry.effects||[]];
       current.sounds=[];
       if(entry.audio)current.sounds.push({at:entry.audioAt||0,audio:this.newAudio(entry.audio,volume*(entry.audioGain??1))});
+      for(const line of entry.voiceLines||[]){
+        current.sounds.push({at:line.at,audio:this.newAudio(''+line.name+'.ogg',volume,false)});
+      }
       this.loadCaptions(current);
       this.loadScriptArt(current,extraArt);
     }else if (id==='skyEndCredits') {
@@ -258,8 +261,8 @@ export class ExpandedCutscenes {
     return result;
   }
 
-  newAudio(file,volume){
-    const audio=new Audio(EXPANDED_BASE+file);
+  newAudio(file,volume,expanded=true){
+    const audio=new Audio(expanded?EXPANDED_BASE+file:file);
     audio.preload='auto';
     audio.volume=Math.min(1,volume);
     return audio;
@@ -311,7 +314,14 @@ export class ExpandedCutscenes {
   }
 
   loadCaptions(current){
-    if(current.subtitles&&current.entry.captions)expandedCaptions(current.entry.captions).then(cues=>current.cues=cues).catch(()=>{});
+    if(!current.subtitles)return;
+    if(current.entry.captions)expandedCaptions(current.entry.captions).then(cues=>current.cues=cues).catch(()=>{});
+    else if(current.entry.voiceLines){
+      Promise.all(current.entry.voiceLines.filter(line=>line.captions).map(async line=>{
+        const offset=line.at/1000;
+        return (await expandedCaptions(line.captions)).map(cue=>({...cue,start:cue.start+offset,end:cue.end+offset}));
+      })).then(groups=>current.cues=groups.flat()).catch(()=>{});
+    }
   }
 
   drawScript(ctx,current,elapsed,stage,pose){
@@ -330,7 +340,7 @@ export class ExpandedCutscenes {
       current.sfx(name==='W7W1_shot'?name+(1+Math.floor(Math.random()*4)):name,gain);
     }
     while(current.poses.length&&current.poses[0][0]<=elapsed)pose(...current.poses.shift());
-    const positions=stage(elapsed,{id:current.id,...scriptStageView(current.id,elapsed,current)})||{};
+    const positions=stage(elapsed,{id:current.id,...scriptStageView(current.id,elapsed,current),...current.entry.view})||{};
     const {art,id,entry}=current;
     if(id==='wife-stage'){
       if(art.wifeBackdrop)ctx.drawImage(art.wifeBackdrop,0,0,1280,720);
