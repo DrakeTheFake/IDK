@@ -617,7 +617,7 @@ function hitVampMiddle(time,manual=false){
     const duration=modPose ? modPose.frames*1000/24
       : nativePose ? nativePose.frames.length*1000/nativePose.fps
       : nativeContent.animationDuration(id,name,true);
-    if(duration)actorBF.forced={name,since:time,until:time+duration,lock:name!=='hey'};
+    if(duration)actorBF.forced={name,since:time,until:time+duration,lock:false};
     game.rating={name:hit.judgement.name,since:frameTime,combo:game.stats.combo,delta:hit.delta};
     audio.sfx('VAMP_bloodNoteDodge',.55);
   }else if(manual&&!settings.ghostTapping&&time>0&&!mobileActive()){
