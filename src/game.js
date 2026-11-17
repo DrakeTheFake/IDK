@@ -731,6 +731,13 @@ function forceStagePose(role,name,since,lock){
     ||(isVamp(game.choice)?vampPose(nativeContent.data.vamp,id,name)?.frames*1000/24:0)
     ||(name==='pointing'?69*1000/24:1200);
   actor.forced={name,prefix:name,since,until:since+duration,lock};
+  if(game.qt){
+    const suffix={preDance:'-alt','preDance-erect':'-erect',huh:id==='nene-qt'?'-alt':null,hey:'',cheer:''}[name];
+    if(suffix!=null){
+      game.animationSuffix??={};
+      game.animationSuffix[role]={idle:suffix,dance:!!suffix};
+    }
+  }
 }
 function updateSongEvents(time){
 updateChartEvents(game,time,{bpm:bpmAt(game.chart,time),animate:(target,name,since,lock)=>{const role=['bf','boyfriend','player'].includes(target)?'player':['gf','girlfriend','partner'].includes(target)?'girlfriend':['dad','opponent'].includes(target)?'opponent':null;if(!role){game.propAnimations??={};game.propAnimations[target]={name,since,until:since+1500};return;}if(game.choice.baseSong==='wife-forever'&&game.choice.variant==='pico'&&!game.skyTomatoDance&&

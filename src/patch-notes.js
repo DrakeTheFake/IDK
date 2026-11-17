@@ -1,5 +1,13 @@
 export const PATCH_NOTES = [
   {
+    title:'QT: Rewired stages and cutscenes',
+    sections:[
+      ['Stages','All seven QT stages and their assigned casts load in Story Mode and Freeplay. Extra copies of the same QT tracks from the ZIP importer no longer appear alongside the built-in versions.'],
+      ['Obliterated','KillerByte has his animated eyes. The Erect alley has layered drifting fog, and the classic stage reacts to the chart’s lighting cues.'],
+      ['Blissful and GO GO GO','Blissful has QT’s Story Mode transformation, the Erect dance, and the Pico Mix traffic and bus. The recording studio has its timed lights and ending logos.'],
+    ],
+  },
+  {
     title:'VS. Vamp and Tankman',
     sections:[
       ['VS. Vamp','Play Vamp, Violent, and Vivacious in Story Mode or Freeplay. Freeplay includes their Pico mixes and Erect charts. Use Space (or tap the middle receptor) for the blood notes.'],
