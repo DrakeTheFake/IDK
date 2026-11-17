@@ -823,8 +823,9 @@ export class PreferencesMenu {
       const ctx = capture.getContext('2d');
       ctx.drawImage(canvas, 0, 0);
       const [x, y] = this.lastPointer;
-      ctx.beginPath();
-      ctx.moveTo(x, y); ctx.lineTo(x + 4, y + 24); ctx.lineTo(x + 9, y + 17);
+      ctx.translate(x,y);
+      ctx.scale(capture.width/1280,capture.height/720);
+      ctx.beginPath(); ctx.lineTo(x + 4, y + 24); ctx.lineTo(x + 9, y + 17);
       ctx.lineTo(x + 18, y + 18); ctx.closePath();
       ctx.fillStyle = '#fff'; ctx.strokeStyle = '#111'; ctx.lineWidth = 2;
       ctx.fill(); ctx.stroke();

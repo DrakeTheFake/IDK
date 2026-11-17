@@ -1,5 +1,13 @@
 export const PATCH_NOTES = [
   {
+    title:'QT: Rewired sprite and timing update',
+    sections:[
+      ['Artwork','QT’s cast, moving props, and scripted animations draw from original textures. The canvas renders at higher resolution on larger displays.'],
+      ['Cutscenes','Blissful’s intros and Erect ending follow the installed mod’s timing. Dialogue, captions, and poses share a single clock.'],
+      ['Obliterated','The mid-song video uses the original 1080p file. Erect’s intro, HUD changes, and late videos follow their song cues.'],
+    ],
+  },
+  {
     title:'QT: Rewired stages and cutscenes',
     sections:[
       ['Stages','All seven QT stages and their assigned casts load in Story Mode and Freeplay. Extra copies of the same QT tracks from the ZIP importer no longer appear alongside the built-in versions.'],

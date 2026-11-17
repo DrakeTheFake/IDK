@@ -14,6 +14,7 @@ export class NativeContent {
    const response=await fetch('native-content.json',{cache:'no-cache'});
    if(!response.ok)throw new Error('The stage and character index could not be loaded.');
    this.data=await response.json();
+   this.assets.rigs.index=this.data.rigAssets||{};
    return this;
  }
  validateQtSongs(songs){

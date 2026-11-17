@@ -227,13 +227,13 @@ export class ExpandedCutscenes {
     if (response.ok) this.media = await response.json();
   }
 
-  begin(id,{volume=0.7,misses=0,extraArt={},naughtyness=false,subtitles=true,alternate=id==='sky-pico-stage'&&rollSkyPicoShot(),sfx=()=>{},script=null}={}) {
+  begin(id,{volume=0.7,misses=0,extraArt={},naughtyness=false,subtitles=true,flashing=true,alternate=id==='sky-pico-stage'&&rollSkyPicoShot(),sfx=()=>{},script=null,audioEngine=null}={}) {
     const entry = id==='2hot-alley-outro'&&this.media['2hotCutscene']
       ?{...this.media['2hotCutscene'],stageBeforeVideo:6000}
       :script||this.media[id]||skyStageScene(id,{naughtyness,subtitles,alternate});
     if (!entry) return null;
     this.stop(false);
-    const current = {id,entry,phase:'loading',volume,cues:[],at:performance.now(),skipAt:null,naughtyness,subtitles,alternate,sfx};
+    const current = {id,entry,phase:'loading',volume,cues:[],at:performance.now(),skipAt:null,naughtyness,subtitles,flashing,alternate,sfx,audioEngine};
     if(entry.stageBeforeVideo)current.poses=[[2000,'player','intro1',4000],[2500,'opponent','pissed',3500]];
     const result = new Promise(resolve=>{current.resolve=resolve;});
     this.current=current;
@@ -243,11 +243,12 @@ export class ExpandedCutscenes {
       current.poses=[...entry.poses||[]];
       current.effects=[...entry.effects||[]];
       current.sounds=[];
-      if(entry.audio)current.sounds.push({at:entry.audioAt||0,audio:this.newAudio(entry.audio,volume*(entry.audioGain??1))});
-      for(const line of entry.voiceLines||[]){
-        current.sounds.push({at:line.at,audio:this.newAudio(''+line.name+'.ogg',volume,false)});
+      if(!entry.syncedAudio||!audioEngine){
+        if(entry.audio)current.sounds.push({at:entry.audioAt||0,audio:this.newAudio(entry.audio,volume*(entry.audioGain??1))});
+        for(const line of entry.voiceLines||[]){
+          current.sounds.push({at:line.at,audio:this.newAudio(''+line.name+'.ogg',volume,false)});
+        }
       }
-      this.loadCaptions(current);
       this.loadScriptArt(current,extraArt);
     }else if (id==='skyEndCredits') {
       current.phase='ending';
@@ -268,8 +269,21 @@ export class ExpandedCutscenes {
     return audio;
   }
 
+  async prepareScriptAudio(current){
+    const {entry,audioEngine}=current;
+    const samples=(entry.voiceLines||[]).map(line=>({...line,path:''+line.name+'.ogg',voice:true}));
+    if(entry.audio)samples.push({at:entry.audioAt||0,path:EXPANDED_BASE+entry.audio,gain:entry.audioGain??1});
+    samples.sort((a,b)=>a.at-b.at);
+    return Promise.all(samples.map(async sample=>{
+      const buffer=await audioEngine.load(sample.path).catch(error=>{console.warn(error);return null;});
+      return {...sample,buffer};
+    }));
+  }
+
   async loadScriptArt(current,extraArt){
     const {entry,art}=current;
+    const captions=this.loadCaptions(current);
+    const prepared=entry.syncedAudio&&current.audioEngine?this.prepareScriptAudio(current):null;
     try{
       const polish=entry.polish?await loadSkyPolishPack():null;
       for(const [at,name,gain=1] of entry.sounds||[])current.sounds.push({at,audio:this.newAudio(polish.audio[name],current.volume*gain)});
@@ -286,6 +300,16 @@ export class ExpandedCutscenes {
       if(current.id==='wife-stage')current.wifeLabel=['Hearts','Roses','Freaky','Hearts','Roses','Freaky','Adorable'][Math.floor(Math.random()*7)];
     }catch(error){
       console.warn('A cutscene asset could not load',error);
+    }
+    if(prepared){
+      const [samples]=await Promise.all([prepared,captions]);
+      if(this.current!==current)return;
+      const engine=current.audioEngine,start=engine.ctx.currentTime+.045;
+      current.audioStart=start;
+      current.scriptDuration=Math.max(entry.duration,...samples.map(sample=>
+        sample.voice&&sample.buffer?sample.at+sample.buffer.duration*1000:0),...current.cues.map(cue=>cue.end*1000));
+      current.scheduled=samples.filter(sample=>sample.buffer).map(sample=>
+        engine.playEffect(sample.buffer,sample.gain??1,start+sample.at/1000));
     }
     if(this.current===current){current.at=performance.now();current.phase='script';}
   }
@@ -315,12 +339,13 @@ export class ExpandedCutscenes {
 
   loadCaptions(current){
     if(!current.subtitles)return;
-    if(current.entry.captions)expandedCaptions(current.entry.captions).then(cues=>current.cues=cues).catch(()=>{});
+    if(current.entry.captions)return expandedCaptions(current.entry.captions).then(cues=>current.cues=cues).catch(()=>{});
     else if(current.entry.voiceLines){
-      Promise.all(current.entry.voiceLines.filter(line=>line.captions).map(async line=>{
+      return Promise.all(current.entry.voiceLines.filter(line=>line.captions).map(async line=>{
         const offset=line.at/1000;
-        return (await expandedCaptions(line.captions)).map(cue=>({...cue,start:cue.start+offset,end:cue.end+offset}));
-      })).then(groups=>current.cues=groups.flat()).catch(()=>{});
+        const captions=await expandedCaptions(line.captions).catch(()=>[]);
+        return captions.map(cue=>({...cue,start:cue.start+offset,end:cue.end+offset}));
+      })).then(groups=>current.cues=groups.flat());
     }
   }
 
@@ -377,6 +402,11 @@ export class ExpandedCutscenes {
         x-(frame.frameX||0)*scale-frame.width*scale/2,y-(frame.frameY||0)*scale-370,
         frame.width*scale,frame.height*scale);
     }
+    const flash=entry.flash;
+    if(current.flashing&&flash&&elapsed>=flash.at){
+      const phase=(elapsed-flash.at)/flash.duration,amount=flash.hold==null?1-phase:phase<1?phase:elapsed<flash.at+flash.duration+flash.hold?1:0;
+      if(amount>0){ctx.fillStyle='rgba('+flash.color+','+flash.opacity*amount+')';ctx.fillRect(0,0,1280,720);}
+    }
     const fadeIn=entry.fadeIn===0?0:1-(elapsed-(entry.fadeInAt||0))/(entry.fadeIn||800);
     const fade=Math.max(0,fadeIn,entry.fadeOut?(elapsed-entry.fadeOut)/(entry.fadeOutDuration||1800):0);
     if(fade){ctx.fillStyle='rgba(0,0,0,'+Math.min(1,fade)+')';ctx.fillRect(0,0,1280,720);}
@@ -419,6 +449,7 @@ export class ExpandedCutscenes {
       sound.audio.load?.();
     }
     current.sounds=[];
+    for(const source of current.scheduled||[])source?.stop();
     current.jingle?.pause();
     current.voice?.stop();
     current.resolve(complete?current:false);
@@ -428,9 +459,10 @@ export class ExpandedCutscenes {
     const current=this.current;
     if (!current) return '';
     const {video,ending,phase,cues}=current;
-    const elapsed=now-current.at;
+    const elapsed=current.audioStart==null?now-current.at:Math.max(0,(current.audioEngine.ctx.currentTime-current.audioStart)*1000);
+    current.elapsed=elapsed;
     if(phase==='ending-fade'&&elapsed>=1000){this.play();return '';}
-    if(phase==='script'&&elapsed>=current.entry.duration){this.stop(true);return '';}
+    if(phase==='script'&&elapsed>=(current.scriptDuration??current.entry.duration)){this.stop(true);return '';}
     ctx.fillStyle='#000';
     ctx.fillRect(0,0,1280,720);
     const frame=phase==='ending'||phase==='ending-fade'?ending:video;

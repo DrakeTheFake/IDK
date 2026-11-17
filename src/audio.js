@@ -14,7 +14,7 @@ export class AudioEngine {
     this.stopMenu();this.menuFile=file;this.menu=new Audio(`${file}.ogg`);this.menu.loop=loop;this.menu.volume=this.settings.volume*0.8;this.menu.play().catch(()=>{});
   }
   stopMenu(){if(this.menu){this.menu.pause();this.menu.currentTime=0;}this.menu=null;this.menuFile='';}
-  playEffect(buffer,volume=1){
+  playEffect(buffer,volume=1,at=this.ctx.currentTime){
     if(!buffer)return null;
     const source=this.ctx.createBufferSource(),gain=this.ctx.createGain();
     source.buffer=buffer;
@@ -22,7 +22,7 @@ export class AudioEngine {
     source.connect(gain);
     gain.connect(this.fx);
     source.onended=()=>{source.disconnect();gain.disconnect();};
-    source.start();
+    source.start(at);
     return source;
   }
   async sfx(name,volume=1){try{await this.unlock();const buffer=await this.load(`${name}.ogg`);this.playEffect(buffer,volume);}catch(e){console.warn('Sound effect could not play',name,e.message);}}

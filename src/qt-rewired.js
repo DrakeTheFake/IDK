@@ -1,4 +1,4 @@
-import {bpmAt,clamp,HIT_WINDOW} from './core.js';
+import {beatAt,bpmAt,clamp,HIT_WINDOW} from './core.js';
 import {EXPANDED_BASE} from './expanded-content.js';
 
 export const isQtRewired=choice=>choice?.source==='qt-rewired';
@@ -12,6 +12,17 @@ export function qtRequiredArt(choice,art){
   return names;
 }
 
+export function qtSounds(choice){
+  if(!isQtRewired(choice))return [];
+  if(choice.baseSong==='go-go-go')return ['QTR_gameplay_collabClapClap','QTR_gameplay_collabSongEnd'];
+  if(choice.variant==='pico')return ['QTR_gameplay_motorcycle'];
+  if(!choice.baseSong.startsWith('obliterated'))return [];
+  return [
+    ...[1,2,3].flatMap(n=>['QTR_sawblades_alerts_alert-'+n,'QTR_sawblades_attacks_attack-'+n]),
+    ...(choice.variant==='erect'?['QTR_gameplay_introObliteratedErect','QTR_gameplay_endingObliteratedErect']:[]),
+  ];
+}
+
 export function createQtGameplay(choice,chart){
   if(!isQtRewired(choice))return null;
   const attacks=[], cues=[];
@@ -23,10 +34,11 @@ export function createQtGameplay(choice,chart){
     const theme=count===2?2:1;
     cues.push({at:event.t,label:'alert '+theme+' beat 1',sound:'alert-1',beat},
       {at:event.t+beat,label:'alert '+theme+' beat 2',sound:'alert-'+(count===2?2:1),beat});
-    if(count===3)cues.push({at:event.t+2*beat,label:'alert 2 attack 1',sound:'alert-1',beat});
+    if(count===3)cues.push({at:event.t+2*beat,label:'alert 2 attack 1',sound:'attack-1',beat},
+      {at:event.t+3*beat,label:'alert 2 attack 1',sound:'attack-1',beat});
     for(let i=0;i<count;i++){
-      const at=event.t+((count===3?3:2)+i)*beat;
-      attacks.push({at,index:i,done:false});
+      const at=event.t+((count===3?4:2)+i)*beat;
+      attacks.push({at,index:i,done:false,lead:beat});
       const label=count===1?'alert 1 attack':i===0?'alert 2 attack 1':'alert 2 attack 2';
       cues.push({at,label,sound:'attack-'+(i+1),beat,attack:true});
     }
@@ -44,6 +56,7 @@ export function createQtGameplay(choice,chart){
   }
   return {attacks,cues,attackIndex:0,cueIndex:0,events:chart.events.filter(e=>['changeStage','blackIn','fadeStart'].includes(e.e)),
     visualIndex:0,videos,stagePhase:'Killer',phaseAt:0,lastTrafficBeat:-1,studio:choice.stage==='recordingStudio',
+    erectKiller:choice.stage==='qtStageObliteratedErect',erectCity:choice.stage==='qtStageCityErect',
     nextCarDirection:1,carChance:.1,luckyPlush:Math.random()<.05,gangnam:Math.random()<.05};
 }
 
@@ -72,17 +85,48 @@ export function dodgeQt(game,time,force){
   return true;
 }
 
+function preloadOriginalVideo(qt){
+  if(qt.originalVideo)return;
+  const controller=new AbortController();
+  const request={controller};
+  qt.originalVideo=request;
+  Promise.all([1,2].map(async part=>{
+    const response=await fetch(EXPANDED_BASE+'QTR_cutscene-original-'+part+'.bin',{signal:controller.signal});
+    if(!response.ok)throw new Error('The original Obliterated video could not load.');
+    return response.arrayBuffer();
+  })).then(parts=>{
+    if(qt.originalVideo===request)request.url=URL.createObjectURL(new Blob(parts,{type:'video/mp4'}));
+  }).catch(error=>{if(error.name!=='AbortError'){request.failed=true;console.warn(error);}});
+}
+
+function unloadVideoElement(qt){
+  const video=qt.video?.element;
+  if(!video)return;
+  video.pause();
+  video.removeAttribute('src');
+  video.load();
+  qt.video=null;
+}
+
 function updateVideo(qt,time,rate){
+  if(qt.videos[0]?.file==='cutscene'&&time>=0&&!qt.originalVideo&&!qt.originalVideoFinished){
+    preloadOriginalVideo(qt);
+  }
   const current=qt.videos.find(clip=>time>=clip.at&&time<clip.end)
     ||qt.videos.find(clip=>time>=clip.at-3500&&time<clip.at);
-  if(qt.video?.clip!==current){
+  if(!current&&qt.originalVideo&&time>=qt.videos[0].end){
     closeQtVideo(qt);
-    if(current){
+    qt.originalVideoFinished=true;
+  }
+  if(qt.video?.clip!==current){
+    unloadVideoElement(qt);
+    const original=current?.file==='cutscene'?qt.originalVideo:null;
+    if(current&&(!original||original.url||original.failed)){
       const element=document.createElement('video');
       element.preload='auto';
       element.muted=true;
       element.playsInline=true;
-      element.src=EXPANDED_BASE+'QTR_'+current.file+'.mp4';
+      element.src=original?.url||EXPANDED_BASE+'QTR_'+current.file+'.mp4';
       qt.video={clip:current,element};
     }
   }
@@ -99,15 +143,16 @@ function updateVideo(qt,time,rate){
 }
 
 export function closeQtVideo(qt){
-  if(!qt?.video)return;
-  const video=qt.video.element;
-  video.pause();
-  video.removeAttribute('src');
-  video.load();
-  qt.video=null;
+  if(!qt)return;
+  unloadVideoElement(qt);
+  if(qt.originalVideo){
+    qt.originalVideo.controller.abort();
+    if(qt.originalVideo.url)URL.revokeObjectURL(qt.originalVideo.url);
+    qt.originalVideo=null;
+  }
 }
 
-export function updateQt(game,time,{mode,sound,force,reducedMotion=false}){
+export function updateQt(game,time,{mode,sound,force,reducedMotion=false,songTime=time}){
   const qt=game.qt;
   if(!qt)return;
   while(qt.events[qt.visualIndex]?.t<=time){
@@ -116,6 +161,15 @@ export function updateQt(game,time,{mode,sound,force,reducedMotion=false}){
     if(event.e==='blackIn')qt.blackIn=event.t;
     if(event.e==='fadeStart')qt.fadeStart=event.t;
   }
+  if(qt.erectKiller&&songTime>=0){
+    const beat=beatAt(game.chart,songTime);
+    if(!qt.erectOpened){qt.erectOpened=true;sound('QTR_gameplay_introObliteratedErect',1);}
+    if(!qt.erectReleased&&beat>=8.5){
+      qt.erectReleased=true;
+      force('opponent','intro-erect',time,true);
+    }
+    if(!qt.erectEnded&&beat>=456){qt.erectEnded=true;sound('QTR_gameplay_endingObliteratedErect',1);}
+  }
   if(time>=0){
     const beat=Math.floor(game.beat);
     const newBeat=beat!==qt.lastTrafficBeat;
@@ -123,10 +177,6 @@ export function updateQt(game,time,{mode,sound,force,reducedMotion=false}){
     if(newBeat&&qt.studio){
       if(beat===110)sound('QTR_gameplay_collabClapClap',1);
       if(beat===286)sound('QTR_gameplay_collabSongEnd',1);
-    }
-    if(newBeat&&game.choice?.stage==='qtStageObliteratedErect'&&beat===456){
-      sound('QTR_gameplay_endingObliteratedErect',1);
-      force('opponent','tsundere',time,true);
     }
     if(newBeat&&!reducedMotion&&game.choice?.stage==='qtStagePico'){
       if(beat===242&&Math.random()<.05)qt.busAt=time;
@@ -161,6 +211,7 @@ export function updateQt(game,time,{mode,sound,force,reducedMotion=false}){
         qt.sawDeath=game.stats.health<=0;
         force('player','sawHit-'+(attack.index%2),time,true);
       }
+      qt.lastAttack=attack;
       qt.attackIndex++;
     }
   }else{
@@ -168,7 +219,34 @@ export function updateQt(game,time,{mode,sound,force,reducedMotion=false}){
     while(qt.cues[qt.cueIndex]?.at<=time)qt.cueIndex++;
     while(qt.attacks[qt.attackIndex]?.at<=time)qt.attackIndex++;
   }
-  if(qt.videos.length)updateVideo(qt,time,game.modifiers.rate);
+  if(qt.videos.length)updateVideo(qt,songTime,game.modifiers.rate);
+  if(qt.erectKiller&&qt.video?.clip.file==='obliteratedErectEdit'&&qt.video.element.ended&&!qt.erectFinalPose){
+    qt.erectFinalPose=true;
+    force('opponent','tsundere',time,true);
+  }
+}
+
+export function qtPresentation(qt,beat,time){
+  if(!qt)return {};
+  const unit=(at,duration)=>clamp((time-at)/duration,0,1);
+  if(qt.erectKiller){
+    const blackout=time<12500?1-unit(0,12500):
+      time<178545?unit(147900,1773):time<189600?1-unit(178545,9500):unit(189600,4650);
+    const hud=time<148300?clamp((beat-28)/5,0,1):
+      time<152300?1-unit(148300,1800):time<179200?unit(152300,2900):1-unit(179200,5000);
+    return {blackout,hud,hideOpponent:time>=152220,centerPlayer:time>=152220};
+  }
+  if(qt.erectCity){
+    const flash=[116840,202490,226380].findLast(at=>at<=time);
+    return {hideFeedback:beat>=222&&beat<355||beat>=480&&beat<543,
+      opponentAlpha:beat>=221&&beat<348||beat>=478&&beat<544?.3:1,
+      flash:flash==null?0:.3*(1-unit(flash,1400))};
+  }
+  const clip=qt.videos[0];
+  if(clip&&qt.fadeStart!=null&&time<clip.end){
+    return {hud:1-unit(qt.fadeStart,3000),playerAlpha:1-.33*unit(clip.at,2000)};
+  }
+  return {};
 }
 
 const studioDark=beat=>beat<16||beat>=111&&beat<176||beat>=239&&beat<272;
@@ -216,50 +294,67 @@ export function qtProp(prop,qt,time,flashes,{art,elapsed=0,outro=false,reducedMo
   return prop;
 }
 
-export function qtScene(choice,kind,lang='english'){
+export function qtScene(choice,kind,lang='english',zoom){
   if(!isQtRewired(choice))return null;
+  const scene=qtSceneDetails(choice,kind,lang,zoom);
+  return scene&&{...scene,syncedAudio:true};
+}
+
+function qtSceneDetails(choice,kind,lang,stageZoom){
   const line=(at,name,captions)=>({at,name:'QTR_'+name,captions:captions&&'QTR_'+lang+'_'+captions+'.srt'});
   const hi=at=>line(at,'gameplay_countdown_'+lang+'_hi_cutie','hi-cutie');
-  const camera=zoom=>({camera:[[0,['opponent',0,0,zoom]],[3500,['player',0,0,zoom],2200,'quadInOut']]});
+  const zoom=stageZoom??(choice.variant==='erect'?.585:choice.variant==='pico'?.69:.8);
+  const point=(x,y,multiplier=1)=>['position',x,y,zoom*multiplier];
+  const focus=(role,x=0,y=0,multiplier=1)=>[role,x,y,zoom*multiplier];
+  const greeting=[[0,focus('opponent',0,-235)],[0,focus('opponent',0,0,1.1875),2750,'expoOut']];
   if(choice.baseSong==='blissful'){
     if(kind==='outro'&&choice.variant==='erect')return {
-      duration:5800,fadeIn:0,audio:'QTR_outroSong-erect.ogg',view:camera(.7),
-      voiceLines:[line(1100,'gameplay_cutsceneSfx_'+lang+'_bf_qt_erect_ending','cutsceneErect_showoff')],
-      poses:[[700,'opponent','erectEnding',2600],[3400,'player','shoulderSwish',2100]],
+      duration:14000,fadeIn:0,fadeOut:9300,fadeOutDuration:2000,audio:'QTR_outroSong-erect.ogg',audioGain:.2,
+      view:{camera:[[0,point(510,923,1.20),2700,'quartInOut'],[2350,point(538,923,1.08),2000,'expoOut'],
+        [4650,point(538,923,1.16),800,'quartIn'],[4950,point(538,923,1.12),2200,'expoOut'],
+        [5750,point(538,923),1400,'expoOut'],[6400,point(1040,931),2100,'quartInOut'],[8400,point(1040,320),2900,'quartIn']]},
+      voiceLines:[line(0,'gameplay_cutsceneSfx_'+lang+'_bf_qt_erect_ending','cutsceneErect_showoff'),
+        line(7942,'gameplay_cutsceneSfx_english_bf_bf_erect_shoulder_swish')],
+      poses:[[458,'opponent','erectEnding'],[7958,'player','shoulderSwish']],
     };
     if(kind==='outro'&&choice.variant==='classic')return {
-      duration:17500,fadeIn:0,fadeOut:15675,transform:true,
+      duration:17500,fadeIn:0,fadeOut:15700,fadeOutDuration:1,transform:true,flash:{at:13000,duration:2000,color:'255,255,255',opacity:1,hold:700},
       view:{camera:[[0,['position',860,500,.68]],[1000,['opponent',0,0,.68],2550,'quadInOut']]},
       voiceLines:[line(1000,'qtsfx')],
     };
     if(kind!=='intro')return null;
     if(choice.variant==='erect')return {
-      duration:7000,audio:'QTR_introSong-erect.ogg',view:camera(.7),
-      voiceLines:[line(1200,'gameplay_cutsceneSfx_'+lang+'_bf_qt_erect_intro_1','cutsceneErect_alright-cutie'),
-        line(4050,'gameplay_cutsceneSfx_'+lang+'_bf_qt_erect_intro_2','cutsceneErect_well-see')],
-      poses:[[900,'opponent','erectIntro1',3000],[3100,'player','superHey',1150],[4050,'opponent','erectIntro2',2750]],
+      duration:9800,fadeIn:2750,audio:'QTR_introSong-erect.ogg',audioGain:.2,
+      view:{camera:[[0,point(538,500,1.08)],[0,point(538,923,1.08),3400,'expoOut'],
+        [2590,point(510,923,1.16),3000,'expoOut'],[3483,point(1090,931,1.3),2600,'quartInOut'],
+        [5700,point(1040,931,1.16),800,'elasticOut'],[6250,point(510,923,1.16),2500,'quartInOut'],
+        [8400,focus('opponent'),4500,'quartInOut']]},
+      voiceLines:[line(900,'gameplay_cutsceneSfx_'+lang+'_bf_qt_erect_intro_1','cutsceneErect_alright-cutie'),
+        line(4341,'gameplay_cutsceneSfx_english_bf_bf_erect_yeah'),
+        line(7100,'gameplay_cutsceneSfx_'+lang+'_bf_qt_erect_intro_2','cutsceneErect_well-see')],
+      poses:[[0,'opponent','erectIntro1',900,0],[900,'opponent','erectIntro1'],
+        [4341,'player','superHey'],[6000,'opponent','erectIntro2']],
+      flash:{at:5740,duration:1400,color:'255,155,246',opacity:.3},
     };
     if(choice.variant==='pico')return {
-      duration:11000,audio:'QTR_introSong-pico.ogg',view:camera(.81),
+      duration:11000,fadeIn:2750,audio:'QTR_introSong-pico.ogg',audioGain:.1,bpm:103,
+      view:{camera:[...greeting,[3500,focus('player',100,0,1.1875),3000,'quadInOut'],
+        [6350,focus('player',100,0,1.25),1500,'quadInOut']]},
       voiceLines:[hi(980),line(4150,'gameplay_cutsceneSfx_pico_introCutscene_picoWave')],
-      poses:[[0,'opponent','still',500],[500,'opponent','intro',3000],[3500,'player','introbl',7000]],
+      poses:[[0,'opponent','still',500],[500,'opponent','intro'],[3500,'player','introbl']],
     };
+    if(choice.variant==='2021')return null;
     return {
-      duration:8100,audio:'QTR_introSong-default.ogg',view:camera(.78),
-      voiceLines:[hi(2150)],poses:[[0,'opponent','still',1500],[1500,'opponent','intro',3000],[4300,'player','intro',3000]],
+      duration:4000,fadeIn:2750,audio:'QTR_introSong-default.ogg',audioGain:.1,bpm:130,view:{camera:greeting},
+      voiceLines:[hi(1090)],poses:[[0,'opponent','still',500],[500,'opponent','intro']],
     };
-  }
-  if(choice.baseSong==='obliterated'&&choice.variant==='erect'){
-    return kind==='intro'?{
-      duration:5500,view:camera(.77),voiceLines:[line(0,'gameplay_introObliteratedErect')],
-      poses:[[0,'opponent','intro-erect',5200]],
-    }:null;
   }
   if(choice.baseSong==='go-go-go'){
     if(kind==='outro')return {duration:6300,fadeIn:0,collabEnd:true,horse:Math.random()<.005};
     const times=lang==='spanish'?[20,1550,3035]:[0,1240,2900];
     const names=['cg5-line-1','qt-line-1','cg5-line-2'];
-    return {duration:lang==='spanish'?5700:5450,view:camera(.82),
+    return {duration:lang==='spanish'?5700:5450,view:{camera:[[0,focus('opponent',0,0,1.18)],
+      [times[1],focus('player',0,0,1.18),650,'quadInOut'],[times[2],focus('opponent',0,0,1.18),700,'quadInOut']]},
       voiceLines:names.map((name,i)=>line(times[i],'gameplay_introGoGoGo_'+lang+'_'+name,'introGoGoGo_'+name)),
       poses:[[0,'opponent','singUP',1100],[times[1],'player','hey',1500],[times[2],'opponent','singUP',1800]]};
   }
