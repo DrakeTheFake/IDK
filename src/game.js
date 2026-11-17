@@ -30,7 +30,7 @@ import {updateChartEvents} from './song-events.js';
 import {drawABot} from './abot.js';
 import {ModLibrary,ModManager} from './mods.js';
 import {drawModCharacter,drawModStageProps} from './mod-visuals.js';
-import {isVamp,createVampGameplay,vampHit,updateVampNotes,vampStageCue,vampSceneActors,vampQuote,vampAtmosphere,vampPose,vivaciousIntroTime} from './vamp.js';
+import {isVamp,createVampGameplay,vampHit,updateVampNotes,vampStageCue,vampSceneActors,vampQuote,vampAtmosphere,vampPose} from './vamp.js';
 
 const canvas=document.querySelector('#screen'),ctx=canvas.getContext('2d',{alpha:false});
 const buttonLayer=document.querySelector('#buttons'),announcement=document.querySelector('#announcement');
@@ -666,7 +666,7 @@ function updateGame(dt){
     if(!settings.reducedMotion)vampStageCue(game,time,(name,gain)=>audio.sfx(name,gain));
     const drain=game.vamp.drainAt==null?0:.5*clamp(1-(time-game.vamp.drainAt)/game.vamp.drainDuration,0,1);
     if(drain&&!game.practice&&!game.botplay)game.stats.health=Math.max(0,game.stats.health-drain*dt);
-    const video=game.vamp.video,at=vivaciousIntroTime(countdownTime,game.chart.bpm);
+    const video=game.vamp.video,at=countdownTime/1000;
     if(video&&!video.error&&at>=0&&beat<32){
       video.playbackRate=game.modifiers.rate;
       if(video.readyState>=2&&!video.seeking&&Math.abs(video.currentTime-at)>.18)video.currentTime=at;
@@ -786,12 +786,12 @@ function stageCharacterId(role){
 function drawSceneCharacterRaw(role,actor,position,time,stageScale=null,globalOffsets=true){const id=stageCharacterId(role);if(!id||id==='none')return role==='girlfriend';actor=actor||(role==='girlfriend'?actorGF:null);const config=game.modVisuals?.characters[role],bpm=bpmAt(game.chart,time),period=game.eventBop[role]??(role==='girlfriend'?1:dancePeriod(bpm)),idle=!actor||actor.direction==='idle'||time>actor.until,forced=actor?.forced&&time<actor.forced.until?actor.forced:null;
  if(config){drawModCharacter(ctx,assets,config,{x:position[0],y:position[1],scale:role==='girlfriend'?0.62:0.65,direction:idle?'idle':actor.direction,animation:forced?.name,time:forced?time-forced.since:idle?period===0?0:((game.beat%period+period)%period)*60000/bpm:time-actor.since,beat:game.beat,bopBeats:period,player:role==='player'});return true;}
  const options={x:position[0],y:position[1],scale:stageScale??(role==='girlfriend'?0.62:role==='player'?0.66:0.7),time,naughtyness:settings.naughtyness!==false,beat:game.beat,bpm,period,player:role==='player',globalOffsets,suffix:game.animationSuffix?.[role],...role==='girlfriend'?nativeContent.partnerOverride(game,time,id):{}};
- if(role==='player'&&isVamp(game.choice)){
-   const name=forced?.name||(id==='bf-car'&&!idle&&actor.direction==='UP'?'cheer':null);
+ if(role==='player'&&forced&&isVamp(game.choice)){
+   const name=forced.name;
    const art=vampPose(nativeContent.data.vamp,id,name);
    if(art&&(name!=='fuckyouu'||settings.naughtyness!==false)){
      const [l,t,r,b]=art.bounds,[ox,oy]=art.offsets||[0,0],s=options.scale;
-     const idx=clamp(Math.floor((time-(forced?.since??actor.since))*.024),0,art.frames-1);
+     const idx=clamp(Math.floor((time-forced.since)*.024),0,art.frames-1);
      ctx.save();ctx.translate(position[0],position[1]);if(id.startsWith('pico'))ctx.scale(-1,1);
      atlasFrame(art.name,art.prefix,((l-r)/2-ox)*s,(-b+t-oy)*s,s,idx);ctx.restore();return true;
    }
@@ -1091,10 +1091,8 @@ function drawGameplay(){
  const vampIntro=game.vamp?.video;
  if(vampIntro&&!vampIntro.error&&game.beat<32){
    rect(0,0,1280,720,'#000');
-   if(vivaciousIntroTime(songTime,game.chart.bpm)>=0){
-     if(vampIntro.readyState>=2)ctx.drawImage(vampIntro,0,0,1280,720);
-     if(countdownBeat===-1)drawCountdownPrompt(countdownBeat);
-   }
+   if(countdownBeat===-1)drawCountdownPrompt(countdownBeat);
+   else if(songTime>=0&&vampIntro.readyState>=2)ctx.drawImage(vampIntro,0,0,1280,720);
    newButton('pause','Pause game',1180,0,100,88,pauseGame);
    return;
  }
