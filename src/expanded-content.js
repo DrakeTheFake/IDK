@@ -12,6 +12,16 @@ export function playerIdentity(id='') {
   return id.startsWith('sky')?'sky':id.startsWith('pico')?'pico':'bf';
 }
 
+export function isBuiltInQtDuplicate(record,item,content) {
+  if(record.packageId!=='qt-rewired' && !/^qt\s*:?\s*rewired$/i.test(record.title))return false;
+  const variation=item.variation==='default'?'classic':item.variation;
+  const candidates=content.songs.get(variation==='legacy'?item.songId+'-legacy':item.songId);
+  return Boolean(candidates?.some(song=>song.source==='qt-rewired'&&song.variant===variation
+    &&song.stage===item.metadata.playData?.stage
+    &&song.characters.opponent===item.metadata.playData?.characters?.opponent
+    &&item.levels.every(level=>song.difficulties.includes(level))));
+}
+
 export class ExpandedContent {
   constructor() {
     this.songs = new Map();
@@ -19,7 +29,7 @@ export class ExpandedContent {
   }
 
   async load() {
-    const response = await fetch(EXPANDED_BASE+'songs.json');
+    const response = await fetch(EXPANDED_BASE+'songs.json',{cache:'no-cache'});
     if (!response.ok) throw new Error('The expanded song catalogue could not be loaded.');
     for (const record of await response.json()) {
       if (!this.songs.has(record.baseSong)) this.songs.set(record.baseSong, []);
