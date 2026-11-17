@@ -1,5 +1,13 @@
 export const PATCH_NOTES = [
   {
+    title:'Heartbreak Havoc and gameplay modifiers',
+    sections:[
+      ['Sky Redux','Play Heartbreak Havoc and Sky Classic in Story Mode. Freeplay has seven song versions with their original charts, voices and artwork.'],
+      ['Health and rank','Health Drain takes the selected percentage per opponent note. Choose Safe, 1 HP or Lethal. Your predicted rank appears next to accuracy.'],
+      ['Sky Reborn and VS. Vamp','The cast uses source-resolution artwork, and the long Sky and Violent cutscenes use the original video files.'],
+    ],
+  },
+  {
     title:'QT: Rewired sprite and timing update',
     sections:[
       ['Artwork','QT’s cast, moving props, and scripted animations draw from original textures. The canvas renders at higher resolution on larger displays.'],

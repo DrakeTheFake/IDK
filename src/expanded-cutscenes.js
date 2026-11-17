@@ -1,9 +1,9 @@
-import {EXPANDED_BASE} from './expanded-content.js';
-import {expandedImage,expandedJSON,loadExpandedAnimation} from './sky-ui.js';
-import {drawRepeatingEffect,rollSecret} from './sky-effects.js';
-import {drawCenteredSkyAnimation,loadSkyPolishPack} from './sky-polish.js';
-import {cameraTrack} from './stage-camera.js';
-import {eventEase} from './song-events.js';
+import {EXPANDED_BASE} from './expanded-content.js?v=ec5289725a41d4';
+import {expandedImage,expandedJSON,loadExpandedAnimation} from './sky-ui.js?v=ec5289725a41d4';
+import {drawRepeatingEffect,rollSecret} from './sky-effects.js?v=ec5289725a41d4';
+import {drawCenteredSkyAnimation,loadSkyPolishPack} from './sky-polish.js?v=ec5289725a41d4';
+import {cameraTrack} from './stage-camera.js?v=ec5289725a41d4';
+import {eventEase} from './song-events.js?v=ec5289725a41d4';
 
 const EXPANDED_SCENES={
   'darnell-alley':{duration:10000,audio:'darnell-alley.ogg',audioAt:700,fadeIn:2000,fadeInAt:1000,
@@ -223,7 +223,7 @@ export class ExpandedCutscenes {
   }
 
   async load() {
-    const response = await fetch(EXPANDED_BASE+'cutscenes.json');
+    const response = await fetch(EXPANDED_BASE+'cutscenes.json',{cache:'no-cache'});
     if (response.ok) this.media = await response.json();
   }
 
@@ -322,6 +322,25 @@ export class ExpandedCutscenes {
       return;
     }
     current.jingle?.pause();
+    if(current.entry.parts&&!current.originalVideo&&!current.videoAbort){
+      const controller=new AbortController();
+      current.videoAbort=controller;
+      current.phase='loading';
+      Promise.all(current.entry.parts.map(async file=>{
+        const response=await fetch(EXPANDED_BASE+file,{signal:controller.signal});
+        if(!response.ok)throw new Error('Original cutscene segment could not load.');
+        return response.arrayBuffer();
+      })).then(parts=>{
+        if(this.current!==current)return;
+        current.originalVideo=URL.createObjectURL(new Blob(parts,{type:'video/mp4'}));
+        this.play();
+      }).catch(error=>{
+        if(this.current!==current||error.name==='AbortError')return;
+        console.warn(error);
+        this.play();
+      });
+      return;
+    }
     const video=document.createElement('video');
     video.playsInline=true;
     video.preload='auto';
@@ -329,7 +348,7 @@ export class ExpandedCutscenes {
     video.onplaying=()=>{current.phase='video';};
     video.onended=()=>this.stop(true);
     video.onerror=()=>{current.phase='error';};
-    video.src=EXPANDED_BASE+current.entry.file;
+    video.src=current.originalVideo||EXPANDED_BASE+current.entry.file;
     current.video=video;
     current.phase='loading';
     current.at=performance.now();
@@ -436,6 +455,7 @@ export class ExpandedCutscenes {
     const current=this.current;
     if (!current) return;
     this.current=null;
+    current.videoAbort?.abort();
     if(current.video){
       current.video.onended=current.video.onerror=current.video.onplaying=null;
       current.video.pause();
@@ -443,6 +463,7 @@ export class ExpandedCutscenes {
       current.video.load();
       current.video=null;
     }
+    if(current.originalVideo)URL.revokeObjectURL(current.originalVideo);
     for(const sound of current.sounds||[]){
       sound.audio.pause();
       sound.audio.removeAttribute?.('src');

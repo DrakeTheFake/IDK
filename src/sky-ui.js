@@ -1,4 +1,4 @@
-import {EXPANDED_BASE} from './expanded-content.js';
+import {EXPANDED_BASE} from './expanded-content.js?v=ec5289725a41d4';
 
 export async function expandedImage(file) {
   const image=new Image();
@@ -8,7 +8,7 @@ export async function expandedImage(file) {
 }
 
 export async function expandedJSON(file) {
-  const response=await fetch(EXPANDED_BASE+file);
+  const response=await fetch(EXPANDED_BASE+file,{cache:'no-cache'});
   if(!response.ok)throw new Error('Sky Reborn asset unavailable: '+file);
   return response.json();
 }

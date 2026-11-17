@@ -10,6 +10,12 @@ export class StoryIntros {
     this.base=base;this.ready=false;this.done=true;this.phase='inactive';this.images={};this.groups=new Map();this.sounds={};this.textPool=[];this.volume=0.7;this.cameraZoom=1;this.cameraFocus=null;this.hudAlpha=1;
   }
   async load(songId){
+    if(songId.startsWith('redux-dialogue-')){
+      await this.load('senpai');
+      if(!this.reduxLoading)this.reduxLoading=this.loadRedux().catch(error=>{this.reduxLoading=null;throw error;});
+      await this.reduxLoading;
+      return this;
+    }
     if(this.ready){if(songId==='eggnog-erect-outro')await this.loadEggnog();if(songId.endsWith('-sky'))await this.loadSky();return this;}
     if(this.loading){await this.loading;if(songId==='eggnog-erect-outro')await this.loadEggnog();if(songId.endsWith('-sky'))await this.loadSky();return this;}
     this.loading=(async()=>{
@@ -22,6 +28,19 @@ export class StoryIntros {
       this.ready=true;return this;
     })();
     try{await this.loading;if(songId==='eggnog-erect-outro')await this.loadEggnog();if(songId.endsWith('-sky'))await this.loadSky();return this;}catch(error){this.loading=null;throw error;}
+  }
+  async loadRedux(){
+    const base='assets/expanded/',response=await fetch(base+'redux-dialogue.json');
+    if(!response.ok)throw new Error('Heartbreak Havoc dialogue could not load.');
+    const pack=await response.json();
+    await Promise.all(Object.entries(pack.images).map(async([key,file])=>{
+      const image=new Image();
+      image.src=base+file;
+      await image.decode();
+      this.images[key]=image;
+    }));
+    for(const key of ['conversations','speakers','boxes','atlases'])Object.assign(this.pack[key],pack[key]);
+    for(const [key,file] of Object.entries(pack.audio))this.sounds[key]=new Audio(base+file);
   }
   async loadSky(){
     if(this.skyLoaded)return;
@@ -41,6 +60,7 @@ export class StoryIntros {
   static shouldPlay(songId,{story=true,character='bf',variation='',retry=false,charting=false}={}){
     if(songId==='eggnog-erect-outro')return !charting;
     if(retry||charting)return false;
+    if(songId.startsWith('redux-dialogue-'))return story;
     if(['senpai-sky','roses-sky','thorns-sky'].includes(songId))return true;
     if(songId==='winter-horrorland')return true;
     if(!['senpai','roses','thorns'].includes(songId))return false;
@@ -59,7 +79,8 @@ export class StoryIntros {
       if(!this.pack.eggnog)throw new Error('Call await storyIntros.load("eggnog-erect-outro") first.');
       this.phase='eggnog-outro';this.introDuration=16000;this.cameraStart=cameraStart;this.cameraStartZoom=cameraStartZoom;this.showSubtitles=subtitles;this.subtitleEntries=storyIntroSubtitles(this.pack.eggnog.subtitles);this.hideActors=['opponent'];this.hideProps=['santa'];this.skipArmedAt=null;this.skipTextAt=null;this.shotPlayed=false;this.effect('santa_emotion');return true;
     }
-    if(songId.startsWith('roses')){this.effect('ANGRY_TEXT_BOX');this.startDialogue(now);}
+    if(songId.startsWith('redux-dialogue-'))this.startDialogue(now);
+    else if(songId.startsWith('roses')){this.effect('ANGRY_TEXT_BOX');this.startDialogue(now);}
     else if(songId==='winter-horrorland')this.introDuration=100+(this.pack.audio.Lights_Turn_On.durationMs||4643);
     else if(songId==='thorns')this.introDuration=reducedMotion?250:2100+(this.pack.audio.Senpai_Dies.durationMs||7333)+1600;
     else this.introDuration=reducedMotion?250:2250;

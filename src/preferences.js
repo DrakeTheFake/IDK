@@ -1,4 +1,4 @@
-import {CALIBRATION_BEAT as BEAT,CalibrationAudio,medianDelay} from './audio-timing.js';
+import {CALIBRATION_BEAT as BEAT,CalibrationAudio,medianDelay} from './audio-timing.js?v=ec5289725a41d4';
 const MEDIA = 'assets/preferences/';
 const WIDTH = 1280;
 const HEIGHT = 720;
@@ -32,7 +32,7 @@ const GAMEPAD = {
   ...Object.fromEntries([4, 14, 13, 0, 1, 5].map((button, lane) => [SIX_NOTES[lane], [button]])),
 };
 
-import {SECRET_CHANCES} from './sky-effects.js';
+import {SECRET_CHANCES} from './sky-effects.js?v=ec5289725a41d4';
 
 export const PREFERENCE_DEFAULTS = Object.freeze({
   naughtyness: true, strumlineBackground: 0, flashingLights: true, cameraZooms: true,
@@ -41,7 +41,7 @@ export const PREFERENCE_DEFAULTS = Object.freeze({
   comboPopup: true, comboSwoosh: true, comboSwooshSound: true, comboSwooshThreshold: 0,
   cacheComboAssets: true, normalShaders: false, skyDisableMenus: false,
   freeplayStoryCutscenes: false, skySecretChance: 'Original',
-  songRate:1, healthDrain:0, missDamage:1, instantFail:false, mirrorNotes:false, noFail:false,
+  songRate:1, healthDrain:0, healthDrainLethality:'safe', missDamage:1, instantFail:false, mirrorNotes:false, noFail:false,
   qtLanguage: 'english', qtSawbladeMode: 'default', qtPlushieButton: true,
   vampKey:'Space', vampLanguage:'english',
 });
@@ -62,6 +62,7 @@ export function normalizePreferences(raw = {}, base = {}) {
   }
   result.offset = limitNumber(raw, 'offset', base.offset || 0, -1500, 1500);
   result.debugDisplay = ['Off', 'Simple', 'Advanced'].includes(raw.debugDisplay) ? raw.debugDisplay : 'Off';
+  result.healthDrainLethality = ['safe','oneHP','lethal'].includes(raw.healthDrainLethality) ? raw.healthDrainLethality : 'safe';
   result.qtSawbladeMode = ['default', 'instakill', 'disabled'].includes(raw.qtSawbladeMode) ? raw.qtSawbladeMode : 'default';
   result.skySecretChance = SECRET_CHANCES.includes(raw.skySecretChance) ? raw.skySecretChance : 'Original';
   result.vampKey = validKey(raw.vampKey) ? raw.vampKey : 'Space';
@@ -381,12 +382,14 @@ export class PreferencesMenu {
     if (this.page === 'preferences') return PREFERENCES.filter(row => (!row.capability || this.capabilities[row.capability]) && (!this.paused || !['keyMode','practice','botplay'].includes(row.key)));
     if (this.page === 'modifiers') return [
       number('songRate','Song Speed','Changes audio and chart speed together.',.5,2,.05,percent),
-      number('healthDrain','Health Drain','Health lost per second while the song plays.',0,.1,.005,percent),
+      number('healthDrain','Health Drain','Percent of the full health bar lost per opponent note.',0,.1,.005,percent),
+      choices('healthDrainLethality','Drain Lethality','Safe skips a fatal deduction. 1 HP leaves one point. Lethal allows opponent notes to cause a game over.',
+        ['safe','oneHP','lethal'],mode=>({safe:'Safe',oneHP:'1 HP',lethal:'Lethal'})[mode]),
       number('missDamage','Miss Damage','Multiplier for health lost on a miss.',.25,3,.25,percent),
       flag('instantFail','Instakill','Any missed note or hold ends the run.'),
       flag('mirrorNotes','Mirror Notes','Reverses the note lanes on both sides.'),
       flag('noFail','No Fail','Keep playing at zero health.'),
-      action('Reset Modifiers',()=>{for(const key of ['songRate','healthDrain','missDamage','instantFail','mirrorNotes','noFail'])this.change(key,PREFERENCE_DEFAULTS[key]);}),
+      action('Reset Modifiers',()=>{for(const key of ['songRate','healthDrain','healthDrainLethality','missDamage','instantFail','mirrorNotes','noFail'])this.change(key,PREFERENCE_DEFAULTS[key]);}),
     ];
     if (this.page === 'rewired') return [...REWIRED.filter(row => this.capabilities[row.capability]), action('Exit', () => this.back())];
     if (this.page === 'sky') return [flag('skyDisableMenus', 'Disable Menus', 'Revert the title and main menu to the original game style.'),

@@ -49,6 +49,13 @@ export function parseChart(data){
 export function beatAt(chart,time){let tempo=chart.tempos[0];for(const t of chart.tempos){if(t.time>time)break;tempo=t;}return tempo.beat+(time-tempo.time)*tempo.bpm/60000;}
 export function bpmAt(chart,time){let bpm=chart.bpm;for(const t of chart.tempos){if(t.time>time)break;bpm=t.bpm;}return bpm;}
 export function dancePeriod(bpm){return bpm>=150?2:1;}
+export function healthAfterOpponentNote(health,percentage,lethality){
+  if(health<=0||percentage<=0)return health;
+  const remaining=health-percentage*2;
+  if(lethality==='lethal')return Math.max(0,remaining);
+  if(lethality==='oneHP')return Math.max(Math.min(health,.02),remaining);
+  return remaining>0?remaining:health;
+}
 export function judgement(delta){const a=Math.abs(delta);if(a>HIT_WINDOW)return null;if(a<=45)return {name:'sick',score:350,weight:1};if(a<=90)return {name:'good',score:200,weight:0.75};if(a<=135)return {name:'bad',score:100,weight:0.5};return {name:'shit',score:50,weight:0.25};}
 export function nearestNote(notes,lane,time){
   let left=0,right=notes.length;

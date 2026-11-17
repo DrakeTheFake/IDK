@@ -5,10 +5,13 @@ export const EXPANDED_WEEKS = [
   {id:'sky', name:'BFSWIFEFOREVER', songs:['wife-forever','sky','manifest'], color:'#52bfff', character:'bf'},
   {id:'vamp', name:'VIOLENT VAMPIRE VASECTOMY', songs:['vamp','violent','vivacious'], color:'#a91735', character:'bf'},
   {id:'QTWeek',name:'YOUR FAVORITE ROBOT',songs:['blissful','obliterated'],color:'#ff7ec8',character:'bf'},
-  {id:'CG5Collab',name:"ROCKIN' THEM BEATS",songs:['go-go-go'],color:'#ff2882',character:'bf'}
+  {id:'CG5Collab',name:"ROCKIN' THEM BEATS",songs:['go-go-go'],color:'#ff2882',character:'bf'},
+  {id:'redux-skyweek1',name:'HEARTBREAK HAVOC',songs:['redux-wife-forever','redux-sky','redux-manifest'],color:'#f6a3d8',character:'bf'},
+  {id:'redux-skyweek2',name:'SKY CLASSIC',songs:['redux-wife-forever-c','redux-sky-c','redux-manifest-c'],color:'#b3dfd8',character:'bf'}
 ];
 
 export function playerIdentity(id='') {
+  if(id.startsWith('redux-'))id=id.slice(6);
   return id.startsWith('sky')?'sky':id.startsWith('pico')?'pico':'bf';
 }
 

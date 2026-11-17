@@ -1,6 +1,6 @@
 // Native V-Slice result artwork and timelines. Assets come from the user's game.
-import {EXPANDED_BASE} from './expanded-content.js';
-import {expandedJSON} from './sky-ui.js';
+import {EXPANDED_BASE} from './expanded-content.js?v=ec5289725a41d4';
+import {expandedJSON} from './sky-ui.js?v=ec5289725a41d4';
 // UI/game-state integration belongs to the caller; draw() returns click targets.
 const NR_DIGITS=['ZERO','ONE','TWO','THREE','FOUR','FIVE','SIX','SEVEN','EIGHT','NINE'];
 const NR_CLAMP=(n,a,b)=>Math.min(b,Math.max(a,n));
@@ -16,6 +16,13 @@ export function nativeResultTallies(stats={}){
 }
 export function nativeCompletion(stats){const t=nativeResultTallies(stats);return t.totalNotes?NR_CLAMP((t.sick+t.good-t.missed)/t.totalNotes,0,1):0;}
 export function nativeResultRank(stats){const t=nativeResultTallies(stats);if(!t.totalNotes)return null;if(t.sick===t.totalNotes)return'PERFECT_GOLD';const c=nativeCompletion(t);return c===1?'PERFECT':c>=0.9?'EXCELLENT':c>=0.8?'GREAT':c>=0.6?'GOOD':'SHIT';}
+
+const RANK_LETTERS={PERFECT_GOLD:'P+',PERFECT:'P',EXCELLENT:'E',GREAT:'G',GOOD:'Gd',SHIT:'L'};
+export function predictedRank(stats,forcedRank){
+  const {sick,good,bad,shit,missed}=nativeResultTallies(stats);
+  const rank=forcedRank||nativeResultRank({sick,good,bad,shit,missed,totalNotes:sick+good+bad+shit+missed});
+  return RANK_LETTERS[rank]||'—';
+}
 
 export class NativeResults {
   constructor(base='native-results-'){

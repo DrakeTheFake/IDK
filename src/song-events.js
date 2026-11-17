@@ -13,6 +13,7 @@ export function updateChartEvents(game,time,{bpm=100,animate=()=>{}}={}){const e
  if(event.e==='ScrollSpeed'){const target=Math.max(0.05,EVT_NUMBER(v.scroll,1))/(v.absolute?game.chart.speed:1);if(v.strumline==='both'||!v.strumline){tween('scrollTween','eventScroll',target);tween('scrollPlayerTween','eventScrollPlayer',target);tween('scrollOpponentTween','eventScrollOpponent',target);}else if(v.strumline==='player')tween('scrollPlayerTween','eventScrollPlayer',target);else tween('scrollOpponentTween','eventScrollOpponent',target);}
  if(event.e==='SetCameraBop'){game.bopRate=Math.max(0,EVT_NUMBER(v.rate,4));game.bopIntensity=Math.max(0,Math.min(5,EVT_NUMBER(v.intensity,1)));game.bopOffset=EVT_NUMBER(v.offset,0);}
  if(event.e==='SetTargetBopSpeed')game.eventBop[eventRole(v.target)]=Math.max(0,EVT_NUMBER(v.rate,1));
+ if(event.e==='SwitchIdleSuffix'){const role=eventRole(v.target);game.animationSuffix??={};game.animationSuffix[role]={...game.animationSuffix[role],idle:String(v.suffix||'')};}
  if(event.e==='PlayAnimation')animate(v.target,String(v.anim||'idle'),event.t,!!v.force);
  if(event.e==='AnimationSuffixEvent'){game.animationSuffix??={};const role=eventRole(v.target),prior=game.animationSuffix[role]||{};game.animationSuffix[role]={idle:v.onIdle?String(v.suffix||''):prior.idle,sing:v.onSing===false?'':String(v.suffix||'')};}
  if(event.e==='EnableMask'){game.stageMask=true;game.animationSuffix??={};game.animationSuffix.opponent={idle:'-bloody',sing:'-bloody'};}
