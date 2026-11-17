@@ -1,38 +1,38 @@
-import {SONGS,WEEKS,bpmAt,dancePeriod,DIFFICULTIES,DEFAULT_SETTINGS,HIT_WINDOW,clamp,readJSON,parseChart,beatAt,nearestNote,makeStats,applyHit,applyMiss,accuracy,rank,normalizeSettings,healthAfterOpponentNote} from './core.js?v=ec5289725a41d4';
-import {builtinTrackOffsets} from './builtin-audio.js?v=ec5289725a41d4';
-import {songIntro,songOutro,pixelStage,rosesFade} from './story-flow.js?v=ec5289725a41d4';
-import {ExpandedContent,EXPANDED_BASE,EXPANDED_WEEKS,playerIdentity} from './expanded-content.js?v=ec5289725a41d4';
-import {ExpandedCutscenes,expandedIntro,expandedOutro,expandedStageIntro,expandedCaptions,scriptedCamera,rollSkyPicoShot,blissfulGreeting} from './expanded-cutscenes.js?v=ec5289725a41d4';
-import {SkyGallery,expandedImage,expandedJSON,loadExpandedAnimation} from './sky-ui.js?v=ec5289725a41d4';
-import {expandedNote,drawExpandedRain} from './expanded-gameplay.js?v=ec5289725a41d4';
-import {PATCH_NOTES} from './patch-notes.js?v=ec5289725a41d4';
-import {rollSecret} from './sky-effects.js?v=ec5289725a41d4';
-import {SkyDetails} from './sky-details.js?v=ec5289725a41d4';
-import {SkyPolish,drawSkyAnimation} from './sky-polish.js?v=ec5289725a41d4';
-import {actorCameraPoint,nativeChartCamera} from './stage-camera.js?v=ec5289725a41d4';
-import {officialStageLayout,officialPartnerAnchor,drawOfficialStageFX,officialRequiredSounds,canFire,isOfficialCanNote} from './official-polish.js?v=ec5289725a41d4';
-import {PreferencesMenu,normalizePreferences,bindingFor,noteLaneFor,GamepadPoller,tankmanDeathQuote,naughtyAnimation,skyDeathSounds,ComboFeedback,drawDebugDisplay} from './preferences.js?v=ec5289725a41d4';
-import {Assets} from './assets.js?v=ec5289725a41d4';
-import {AudioEngine} from './audio.js?v=ec5289725a41d4';
-import {ChartEditor} from './editor.js?v=ec5289725a41d4';
-import {installNativeEditor} from './native-editor.js?v=ec5289725a41d4';
-import {chartForSixKeys,SIX_DIRECTIONS,partnerDanceFrame,holdProgress,mobileLaneRegion} from './rhythm.js?v=ec5289725a41d4';
-import {NativeExtras} from './native-extras.js?v=ec5289725a41d4';
-import {NativeResults,nativeResultRank,nativeCompletion,predictedRank} from './native-results.js?v=ec5289725a41d4';
-import {StoryIntros} from './story-intros.js?v=ec5289725a41d4';
-import {PixelUI} from './pixel-ui.js?v=ec5289725a41d4';
-import {NativeContent} from './native-content.js?v=ec5289725a41d4';
-import {isSkyRedux,reduxIntro,reduxEnding,reduxStageFrame,reduxProp} from './sky-redux.js?v=ec5289725a41d4';
-import {TouchControls} from './touch-controls.js?v=ec5289725a41d4';
-import {ModernFreeplay} from './modern-freeplay.js?v=ec5289725a41d4';
-import {CharacterSelect} from './character-select.js?v=ec5289725a41d4';
-import {SceneTransitions} from './transitions.js?v=ec5289725a41d4';
-import {updateChartEvents} from './song-events.js?v=ec5289725a41d4';
-import {drawABot} from './abot.js?v=ec5289725a41d4';
-import {ModLibrary,ModManager} from './mods.js?v=ec5289725a41d4';
-import {drawModCharacter,drawModStageProps} from './mod-visuals.js?v=ec5289725a41d4';
-import {isVamp,createVampGameplay,vampHit,updateVampNotes,vampStageCue,vampSceneActors,vampQuote,vampAtmosphere,vampPose} from './vamp.js?v=ec5289725a41d4';
-import {isQtRewired,createQtGameplay,dodgeQt,updateQt,closeQtVideo,qtProp,qtScene,qtRequiredArt,qtDancePose,qtPresentation,qtSounds} from './qt-rewired.js?v=ec5289725a41d4';
+import {SONGS,WEEKS,bpmAt,dancePeriod,DIFFICULTIES,DEFAULT_SETTINGS,HIT_WINDOW,clamp,readJSON,parseChart,beatAt,nearestNote,makeStats,applyHit,applyMiss,accuracy,rank,normalizeSettings,healthAfterOpponentNote} from './core.js?v=efcefb8518eb12';
+import {builtinTrackOffsets} from './builtin-audio.js?v=efcefb8518eb12';
+import {songIntro,songOutro,pixelStage,rosesFade} from './story-flow.js?v=efcefb8518eb12';
+import {ExpandedContent,EXPANDED_BASE,EXPANDED_WEEKS,playerIdentity} from './expanded-content.js?v=efcefb8518eb12';
+import {ExpandedCutscenes,expandedIntro,expandedOutro,expandedStageIntro,expandedCaptions,scriptedCamera,rollSkyPicoShot,blissfulGreeting} from './expanded-cutscenes.js?v=efcefb8518eb12';
+import {SkyGallery,expandedImage,expandedJSON,loadExpandedAnimation} from './sky-ui.js?v=efcefb8518eb12';
+import {expandedNote,drawExpandedRain} from './expanded-gameplay.js?v=efcefb8518eb12';
+import {PATCH_NOTES} from './patch-notes.js?v=efcefb8518eb12';
+import {rollSecret} from './sky-effects.js?v=efcefb8518eb12';
+import {SkyDetails} from './sky-details.js?v=efcefb8518eb12';
+import {SkyPolish,drawSkyAnimation} from './sky-polish.js?v=efcefb8518eb12';
+import {actorCameraPoint,nativeChartCamera} from './stage-camera.js?v=efcefb8518eb12';
+import {officialStageLayout,officialPartnerAnchor,drawOfficialStageFX,officialRequiredSounds,canFire,isOfficialCanNote,stressSkyPartnerX,stressSkyRunner} from './official-polish.js?v=efcefb8518eb12';
+import {PreferencesMenu,normalizePreferences,bindingFor,noteLaneFor,GamepadPoller,tankmanDeathQuote,naughtyAnimation,skyDeathSounds,ComboFeedback,drawDebugDisplay} from './preferences.js?v=efcefb8518eb12';
+import {Assets} from './assets.js?v=efcefb8518eb12';
+import {AudioEngine} from './audio.js?v=efcefb8518eb12';
+import {ChartEditor} from './editor.js?v=efcefb8518eb12';
+import {installNativeEditor} from './native-editor.js?v=efcefb8518eb12';
+import {chartForSixKeys,SIX_DIRECTIONS,partnerDanceFrame,holdProgress,mobileLaneRegion} from './rhythm.js?v=efcefb8518eb12';
+import {NativeExtras} from './native-extras.js?v=efcefb8518eb12';
+import {NativeResults,nativeResultRank,nativeCompletion,predictedRank} from './native-results.js?v=efcefb8518eb12';
+import {StoryIntros} from './story-intros.js?v=efcefb8518eb12';
+import {PixelUI} from './pixel-ui.js?v=efcefb8518eb12';
+import {NativeContent} from './native-content.js?v=efcefb8518eb12';
+import {isSkyRedux,reduxIntro,reduxEnding,reduxStageFrame,reduxProp,reduxStereoPosition} from './sky-redux.js?v=efcefb8518eb12';
+import {TouchControls} from './touch-controls.js?v=efcefb8518eb12';
+import {ModernFreeplay} from './modern-freeplay.js?v=efcefb8518eb12';
+import {CharacterSelect} from './character-select.js?v=efcefb8518eb12';
+import {SceneTransitions} from './transitions.js?v=efcefb8518eb12';
+import {updateChartEvents} from './song-events.js?v=efcefb8518eb12';
+import {drawABot} from './abot.js?v=efcefb8518eb12';
+import {ModLibrary,ModManager} from './mods.js?v=efcefb8518eb12';
+import {drawModCharacter,drawModStageProps} from './mod-visuals.js?v=efcefb8518eb12';
+import {isVamp,createVampGameplay,vampHit,updateVampNotes,vampStageCue,vampSceneActors,vampQuote,vampAtmosphere,vampPose} from './vamp.js?v=efcefb8518eb12';
+import {isQtRewired,createQtGameplay,dodgeQt,updateQt,closeQtVideo,qtProp,qtScene,qtRequiredArt,qtDancePose,qtPresentation,qtSounds} from './qt-rewired.js?v=efcefb8518eb12';
 
 const canvas=document.querySelector('#screen'),ctx=canvas.getContext('2d',{alpha:false});
 const buttonLayer=document.querySelector('#buttons'),announcement=document.querySelector('#announcement');
@@ -50,6 +50,18 @@ const pixelUI=new PixelUI(assets,audio,()=>nativeContent.data);
 const modernFreeplay=new ModernFreeplay(),characterSelect=new CharacterSelect(),sceneTransitions=new SceneTransitions(),modLibrary=new ModLibrary();
 installNativeEditor(ChartEditor,{loadRaw:(index,diff)=>rawChoice(songChoice(index,diff)),onDifficulty:value=>difficulty=value,characterChoices:()=>['bf','pico-playable','dad','gf','spooky','monster','pico','mom-car','bf-car','gf-car',...Object.keys(nativeContent.data.characterIds||{}),...modLibrary.records.flatMap(r=>r.items.flatMap(i=>Object.values(i.metadata.playData?.characters||{}).filter(v=>typeof v==='string')))],stageChoices:()=>['mainStage','mainStageErect','spookyMansion','spookyMansionErect','phillyTrain','phillyTrainErect','limoRide','limoRideErect',...Object.keys(nativeContent.data.stages),...modLibrary.songs().map(s=>s.stage)]});
 modernFreeplay.backingCard=nativeExtras;
+modernFreeplay.healthIcon=id=>{
+  if(!id)return null;
+  const healthId=nativeContent.character(id)?.metadata?.healthIcon?.id;
+  const name=[nativeContent.data.iconAssets?.[id],`HEALTH_${id}`,healthId&&`HEALTH_${healthId}`]
+    .find(name=>name&&(assets.images[name]||assets.lazyNames.has(name)));
+  if(!name)return null;
+  if(assets.images[name])return assets.images[name];
+  if(!assets.pending.has(name))assets.ensure([name]).then(()=>assets.lazyNames.delete(name))
+    .catch(()=>assets.lazyNames.delete(name));
+  return null;
+};
+modernFreeplay.modIcon=song=>modLibrary.freeplayIcon(song);
 const expandedContent=new ExpandedContent(),expandedCutscenes=new ExpandedCutscenes(),skyGallery=new SkyGallery();
 let patchPage=0,settingsReturn='menu',pendingRankReveal=null,rankReveal=null;
 let skyMenu=null,skySelectLoad=null,skyDJLoad=null,skySecret='';
@@ -428,7 +440,7 @@ function drawMenu(){
   if(skyMenu&&!settings.skyDisableMenus){text('SKY GALLERY',1248,603,24,selected===5?'#fff':'#fbb4f6','right');newButton('main-5','Sky Reborn gallery',965,571,305,70,()=>{selected=5;openSkyGallery();},{select:5});}
   text('PATCH NOTES',1248,642,24,selected===6?'#fff':'#fbb4f6','right');
   newButton('main-6','Patch notes',1010,624,265,54,()=>{selected=6;openMenuChoice();},{select:6});
-  text('WEEKS 1–7 / WEEKEND 1 / SKY REBORN',12,692,16);text('ARROWS + ENTER',1260,692,16,'#fff','right');
+  text("Friday Night Funkin'",1260,692,16,'#fff','right');
 }
 function drawStory(){const week=WEEKS[storyWeek];
  rect(0,0,1280,720,'#000');rect(0,58,1280,378,week.color||'#f9cf51');text('WEEK SCORE: '+storage.get('week:'+week.id+':'+difficulty,0),16,16,28);text(week.name,1260,16,30,'#aaa','right');
@@ -1036,15 +1048,17 @@ function drawExpandedStage(time,script=null){
     if(game.qt?.studio&&role==='girlfriend'&&game.beat<111)continue;
     const meta=stage.characters[key];
     if(!meta)continue;
-    const overrides=view.actors?.[role],offset=script?.actorOffsets?.[role]||[0,0];
-    const pos=overrides?.position||project(meta.position);
     const id=stageCharacterId(role),swing=id==='scenecoresky-shootin'&&!settings.reducedMotion;
+    const config=nativeContent.character(id,role==='player');
+    const centered=id==='scenecoresky-shootin'&&choice.baseSong==='stress'&&choice.variant==='sky'&&choice.stage==='tankmanBattlefieldErect';
+    const worldPosition=centered?[stressSkyPartnerX(stage,config),meta.position[1]]:meta.position;
+    const overrides=view.actors?.[role],offset=script?.actorOffsets?.[role]||[0,0];
+    const pos=overrides?.position||project(worldPosition);
     const angle=swing?-Math.sin(time*.0025)*Math.PI/18:0;
-    const side=swing?-67+Math.sin(time*.00252)*58:0;
+    const side=swing?(centered?0:-67)+Math.sin(time*.00252)*58:0;
     const lift=overrides?.lift||0;
     const position=positions[role]=[pos[0]+(offset[0]+side)*scale,pos[1]+offset[1]*scale-lift];
-    const config=nativeContent.character(id,role==='player');
-    focusPoints[role]=actorCameraPoint(meta.position,meta,config,1);
+    focusPoints[role]=actorCameraPoint(worldPosition,meta,config,1);
     if(lift)focusPoints[role][1]-=lift/scale;
     const cutActor=script?.actors?.find(entry=>entry.role===role&&entry.asset)||(role==='opponent'&&skyOutcome?{
       asset:skyOutcome.art,label:skyOutcome.naughtyness?'Dead':'Dead Candy',age:time,offset:[-190,-581],loop:true,
@@ -1053,6 +1067,10 @@ function drawExpandedStage(time,script=null){
     const vampActor=script?.vampActors?.find(entry=>entry.role===role&&entry.art);
     layers.push({z:fight&&role===game.fightLead?3500:meta.zIndex||0,role,position,angle,
       actorScale:overrides?.actorScale??scale*(meta.scale||1),globalOffsets:overrides?.globalOffsets,vampActor});
+    if(id==='redux-gf-redux'&&config&&nativeContent.data.redux?.stereo&&!script?.hideActors?.includes(role)){
+      layers.push({z:(meta.zIndex||0)-1,stereo:nativeContent.data.redux.stereo,
+        position:reduxStereoPosition(position,config,scale,overrides?.actorScale??scale*(meta.scale||1))});
+    }
   }
   const propActors=script?.props||(deadSniper?[{prop:'sniper',z:21,asset:deadSniper,label:'Sniper Dead Loop',age:time,offset:[-150,550],scale:1.15,loop:true}]:[]);
   for(const prop of propActors){
@@ -1097,6 +1115,12 @@ function drawExpandedStage(time,script=null){
   ctx.translate(640+shakeX,360+shakeY);ctx.scale(bump,bump);ctx.translate(-centerX,-centerY);
   try {
   for(const layer of layers.sort((a,b)=>a.z-b.z)){
+    if(layer.stereo){
+      const tempo=game.chart.tempos.findLast(tempo=>tempo.time<=time)||game.chart.tempos[0];
+      const phase=settings.reducedMotion||time<0?0:(game.beat%1)*60000/tempo.bpm;
+      assets.anim(ctx,layer.stereo,'stereo boom',...layer.position,scale,phase,{loop:false});
+      continue;
+    }
     if(layer.cutActor){
       const {asset,label,age,offset,scale:actorScale=1,loop}=layer.cutActor;
       ctx.save();
@@ -1213,24 +1237,29 @@ function drawExpandedStage(time,script=null){
 function drawTankmanRunners(game,time,worldScale,project){
   const atlas='NATIVE_TANKMAN_RUNNER';
   const erect=game.choice.stage==='tankmanBattlefieldErect';
+  const skyMix=erect&&game.choice.variant==='sky';
+  const running=assets.frames(atlas,'tankman running');
   for(const [i,shot] of game.tankmanRunners.entries()){
     const age=time-shot.t;
-    if(age< -2100||age>430)continue;
+    const staging=skyMix?stressSkyRunner(shot,i,age):null;
+    if(skyMix?!staging:age< -2100||age>430)continue;
     const right=shot.d%4<2;
     const prefix=age<0?'tankman running':i%2?'John Shot 1':'John Shot 2';
-    const frames=assets.frames(atlas,prefix);
+    const frames=age<0?running:assets.frames(atlas,prefix);
     if(!frames.length)continue;
     const frame=frames[age<0?Math.floor((age+2100)*.024)%frames.length:Math.min(frames.length-1,Math.floor(age*.024))];
-    const [x,y]=project([right?500+Math.min(0,age)*.85:820-Math.min(0,age)*.85,erect?819:705+i%5*16]);
-    const scale=worldScale*(erect?.56:.45);
-    ctx.save();ctx.translate(x,y);ctx.scale(right?1:-1,1);
-    assets.draw(ctx,atlas,frame,-(frame.frameWidth||frame.width)*scale/2,-(frame.frameHeight||frame.height)*scale,scale);
+    const [x,y]=project(staging?[staging.x,staging.y]:[right?500+Math.min(0,age)*.85:820-Math.min(0,age)*.85,erect?819:705+i%5*16]);
+    const scale=worldScale*(staging?.scale??(erect?.56:.45));
+    ctx.save();ctx.translate(x,y);ctx.scale((staging?.flip??right)?-1:1,1);
+    const foot=staging&&age<0?432:frame.frameHeight||frame.height;
+    assets.draw(ctx,atlas,frame,-(frame.frameWidth||frame.width)*scale/2,-foot*scale,scale);
     ctx.restore();
   }
 }
 
 async function prepareSceneAssets(choice,cutscenes=false){const week=SONGS[songIndex].week,modern=choice.variant==='erect'||choice.character==='pico'||choice.stage?.endsWith('Erect'),needed=new Set([...nativeContent.required(choice),...pixelUI.required(choice),pixelStage(choice)?'NATIVE_SPLASH_PIXEL':'NATIVE_SPLASH','combo']);if(choice.charts?.picospeaker)needed.add('NATIVE_TANKMAN_RUNNER');if(choice.noteTexture&&assets.atlases[choice.noteTexture])needed.add(choice.noteTexture);for(const name of [choice.character==='pico'?'PICO':'BOYFRIEND','BF_FEAR','DADDY_DEAREST','GF_FEAR'])needed.add(name);if((choice.character==='pico'||['nene-tankmen','otis-speaker'].includes(choice.characters?.girlfriend))&&!pixelStage(choice))for(const name of ['ABOT','ABOT_SCREEN','ABOT_VIZ'])needed.add(name);if(week===2||choice.stage?.startsWith('spooky')){if(modern)needed.add('GF_DARK');for(const name of modern?['SPOOKY_DARK','MONSTER','week2-bgDark','week2-bgLight','week2-stairsDark','week2-stairsLight','WEEK2_TREES']:['SPOOKY','MONSTER','HALLOWEEN'])needed.add(name);}else if(!nativeContent.stage(choice)&&!modern)for(const name of ['stageback','stagefront','stagecurtains'])needed.add(name);for(const name of ['GF_EXTENDED','NENE_EXTENDED'])needed.delete(name);if(choice.character!=='pico')needed.delete('PICO');if(isQtRewired(choice))for(const name of qtRequiredArt(choice,nativeContent.data.qt))needed.add(name);if(isSkyRedux(choice)){
   const art=nativeContent.data.redux;
+  if(choice.characters?.girlfriend==='redux-gf-redux'&&art.stereo)needed.add(art.stereo);
   for(const name of Object.values(art.notes[choice.noteStyle]||{}))needed.add(name);
   if(choice.reduxSong==='sky'&&choice.variant==='pico')for(const name of Object.values(art.bubbles))needed.add(name);
   if(choice.reduxSong==='manifest')for(const name of nativeContent.required({...choice,stage:'redux-mani-redux-2',

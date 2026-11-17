@@ -1,5 +1,5 @@
-import {clamp} from './core.js?v=ec5289725a41d4';
-import {eventEase} from './song-events.js?v=ec5289725a41d4';
+import {clamp} from './core.js?v=efcefb8518eb12';
+import {eventEase} from './song-events.js?v=efcefb8518eb12';
 
 export const isSkyRedux=choice=>choice?.source==='sky-redux';
 
@@ -52,4 +52,12 @@ export function reduxProp(prop,frame){
   if(frame?.messy==null||['shiftback','backTexture'].includes(prop.name))return prop;
   const alpha=prop.name.endsWith('Mad')?frame.messy:(1-frame.messy)*(1-frame.fadeClean);
   return {...prop,alpha};
+}
+
+export function reduxStereoPosition(anchor,config,stageScale,actorScale=stageScale){
+  const [width,height]=config.logicalIdleSize;
+  const [ox,oy]=config.globalOffsets||[0,0];
+  const scale=actorScale*(config.metadata.scale||1);
+  return [anchor[0]+(ox-width/2)*scale-200*stageScale,
+    anchor[1]+(oy-height)*scale+348*stageScale];
 }

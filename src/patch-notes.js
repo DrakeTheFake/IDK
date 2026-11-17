@@ -1,5 +1,12 @@
 export const PATCH_NOTES = [
   {
+    title:'Sky effects and presentation fixes',
+    sections:[
+      ['Sky Reborn','The moving anger signs and hearts are drawn from cached artwork. Stress Sky Mix centers Scenecore Sky and grounds the running Tankmen.'],
+      ['Sky Redux','Girlfriend has her original beat animated speaker. Freeplay uses original icons where available and health icons for missing artwork.'],
+    ],
+  },
+  {
     title:'Heartbreak Havoc and gameplay modifiers',
     sections:[
       ['Sky Redux','Play Heartbreak Havoc and Sky Classic in Story Mode. Freeplay has seven song versions with their original charts, voices and artwork.'],

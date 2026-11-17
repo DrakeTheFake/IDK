@@ -3,6 +3,10 @@
 const DIGITS=['ZERO','ONE','TWO','THREE','FOUR','FIVE','SIX','SEVEN','EIGHT','NINE'];
 const FP_RANK_BADGES={PERFECT_GOLD:'PERFECT rank GOLD',PERFECT:'PERFECT rank0',EXCELLENT:'EXCELLENT rank',GREAT:'GREAT rank',GOOD:'GOOD rank',SHIT:'LOSS rank'};
 const IMAGE_NAMES=['bg','capsule','selector','letters','highscore','normal','easy','hard','fav','dad','bficon','album','albumtitle','digits','smallnumbers','clear','rank','inst','bpm','difficulty','pink','glow','dot','sparkle','dj','erect','nightmare','album3','album3title','album4','album4title','picoicon','bgpico','bfportrait','picoportrait','charselectbg','charselectselector','bfnametag','piconametag','picodj','spookyicon','monstericon','album2','album2title','momicon','gficon','expansion1','expansion1title','expansion2','expansion2title','parentsicon','senpaiicon','spiriticon'];
+const BASE_ICONS={dad:'dad',gf:'gficon',bf:'bficon',pico:'picoicon',spooky:'spookyicon',monster:'monstericon',
+  mom:'momicon','mom-car':'momicon',parents:'parentsicon','parents-christmas':'parentsicon',
+  senpai:'senpaiicon','senpai-angry':'senpaiicon',spirit:'spiriticon'};
+export function freeplayIconArt(opponent,custom){return custom?.[opponent]||BASE_ICONS[opponent];}
 function label(ctx,str,x,y,size=24,color='#fff',align='left',outline=2){ctx.save();ctx.font=`${size}px VCR,monospace`;ctx.textAlign=align;ctx.textBaseline='top';ctx.lineJoin='round';ctx.lineWidth=outline*2;ctx.strokeStyle='#10101c';if(outline)ctx.strokeText(str,x,y);ctx.fillStyle=color;ctx.fillText(str,x,y);ctx.restore();}
 
 export class ModernFreeplay {
@@ -43,7 +47,30 @@ export class ModernFreeplay {
   }
   arrow(ctx,x,y,right=false){ctx.save();ctx.translate(x,y);if(right)ctx.scale(-1,1);ctx.beginPath();ctx.moveTo(12,0);ctx.lineTo(-10,25);ctx.lineTo(12,50);ctx.lineTo(12,37);ctx.lineTo(2,25);ctx.lineTo(12,13);ctx.closePath();ctx.lineJoin='miter';ctx.lineWidth=9;ctx.strokeStyle='#000';ctx.stroke();ctx.fillStyle='#22d1e4';ctx.fill();ctx.lineWidth=2;ctx.strokeStyle='#d7fdff';ctx.stroke();ctx.restore();}
   capsule(ctx,{song,x,y,selected,time,difficulty,favorite,record,previewing}){const scale=0.82;const prefix=selected?'mp3 capsule w backing0':'mp3 capsule w backing NOT SELECTED';const capsule=song.source==='vs-vamp'&&this.frames('vampCapsule',prefix).length?'vampCapsule':this.character==='sky'&&this.frames('skyCapsule',prefix).length?'skyCapsule':'capsule';this.sprite(ctx,capsule,prefix,x,y,scale,selected?Math.floor(time/90)%8:0,selected?1:0.8);
-    if(song.id!=='random'){ctx.save();ctx.imageSmoothingEnabled=false;const icon=this.characterIcons?.[song.opponent];this.sprite(ctx,icon|| (song.opponent?.includes('parents')?'parentsicon':song.opponent?.includes('senpai')?'senpaiicon':song.opponent==='spirit'?'spiriticon':song.opponent?.includes('mom')?'momicon':song.opponent==='gf'?'gficon':song.opponent?.includes('pico')?'picoicon':song.opponent?.includes('spooky')?'spookyicon':song.opponent?.includes('monster')?'monstericon':'dad'),selected?'confirm-hold':'idle',x-2,y+28,1.65);ctx.restore();}
+    if(song.id!=='random'){
+      const custom=this.modIcon?.(song),icon=freeplayIconArt(song.opponent,this.characterIcons);
+      ctx.save();
+      const prefix=selected?'confirm-hold':'idle';
+      if(custom?.frames?.length){
+        const frame=custom.frames.find(f=>f.name.startsWith(prefix))||custom.frames.find(f=>f.name.startsWith('idle'))||custom.frames[0];
+        ctx.imageSmoothingEnabled=false;
+        const scale=1.65,w=frame.width*scale,h=frame.height*scale;
+        ctx.translate(x-2-(frame.frameX||0)*scale,y+28-(frame.frameY||0)*scale);
+        if(frame.rotated){ctx.translate(0,w);ctx.rotate(-Math.PI/2);}
+        ctx.drawImage(custom.image,frame.x,frame.y,frame.width,frame.height,0,0,w,h);
+      }else if(icon&&(!song.mod||!custom?.image)){
+        ctx.imageSmoothingEnabled=false;
+        this.sprite(ctx,icon,this.frames(icon,prefix).length?prefix:'idle',x-2,y+28,1.65);
+      }else{
+        const image=custom?.image||this.healthIcon?.(song.opponent);
+        if(image){
+          const size=Math.min(image.height,image.width);
+          ctx.imageSmoothingEnabled=size>=100;
+          ctx.drawImage(image,0,0,size,size,x+1,y+31,58,58);
+        }
+      }
+      ctx.restore();
+    }
     label(ctx,song.name,x+65,y+23,27,selected?'#e9ffff':'#a1b0b9','left',2);
     if(song.id!=='random'){this.image(ctx,'bpm',x+62,y+83,28,16,selected?0.9:0.55);label(ctx,String(song.bpm||100),x+94,y+84,16,selected?'#8c97a0':'#4b5460','left',0);const week=typeof song.week==='number'?(song.week?'WEEK '+song.week:'TUTORIAL'):song.week==='weekend1'?'WEEKEND 1':song.week==='sky'?'SKY REBORN':'MOD';label(ctx,week,x+203,y+84,16,selected?'#8c97a0':'#4b5460','left',0);this.image(ctx,'difficulty',x+350,y+83,65,16,selected?0.8:0.45);if(record?.nativeRank)this.rankBadge(ctx,record.nativeRank,x+424,y+43,.92,selected?Math.floor(time/50):0);else if(record)label(ctx,record.rank||'',x+434,y+32,23,'#52f1f8','center',2);}
     if(favorite)this.sprite(ctx,'fav','favorite heart',x+443,y+17,0.65,0);

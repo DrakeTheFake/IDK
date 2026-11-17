@@ -1,13 +1,13 @@
-import {ZipArchive} from './zip.js?v=ec5289725a41d4';
-import {vsliceLevels,vsliceToClassic} from './vslice.js?v=ec5289725a41d4';
-import {loadModVisuals} from './mod-visuals.js?v=ec5289725a41d4';
-import {isBuiltInQtDuplicate} from './expanded-content.js?v=ec5289725a41d4';
+import {ZipArchive} from './zip.js?v=efcefb8518eb12';
+import {vsliceLevels,vsliceToClassic} from './vslice.js?v=efcefb8518eb12';
+import {loadModVisuals,loadModFreeplayIcon} from './mod-visuals.js?v=efcefb8518eb12';
+import {isBuiltInQtDuplicate} from './expanded-content.js?v=efcefb8518eb12';
 const MOD_EVENTS=new Set(['FocusCamera','ZoomCamera','PlayAnimation','SetCameraBop','ScrollSpeed','SetTargetBopSpeed','SetHealthIcon']);
 const MOD_EXTENSIONS=['ogg','mp3','wav'];
 const MOD_ESCAPE=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function modRequest(request){return new Promise((resolve,reject)=>{request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});}
 export class ModLibrary {
-  constructor(){this.records=[];this.archives=new Map();this.visuals=new Map();this.db=null;this.sessionOnly=false;}
+  constructor(){this.records=[];this.archives=new Map();this.visuals=new Map();this.menuIcons=new Map();this.db=null;this.sessionOnly=false;}
   async init(){try{this.db=await new Promise((resolve,reject)=>{const request=indexedDB.open('fnf-browser-mods',1);request.onupgradeneeded=()=>request.result.createObjectStore('mods',{keyPath:'id'});request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});this.records=await modRequest(this.db.transaction('mods').objectStore('mods').getAll());}catch{this.sessionOnly=true;}return this.songs();}
   async save(record){if(this.db){try{await new Promise((resolve,reject)=>{const tx=this.db.transaction('mods','readwrite');tx.objectStore('mods').put(record);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);});return true;}catch{this.sessionOnly=true;return false;}}return false;}
   async archive(record){if(!this.archives.has(record.id))this.archives.set(record.id,ZipArchive.open(record.blob));return this.archives.get(record.id);}
@@ -35,6 +35,16 @@ export class ModLibrary {
     .filter(item=>!content||!isBuiltInQtDuplicate(record,item,content))
     .map(item=>({id:`mod/${record.id}/${item.key}`,name:item.name,bpm:item.bpm,week:'MOD',mod:{recordId:record.id,itemKey:item.key},difficulties:item.levels,opponent:item.metadata.playData?.characters?.opponent||'dad',stage:item.metadata.playData?.stage||'mainStage',artist:item.metadata.artist||record.author,file:'mod'})));}
   item(song){const record=this.records.find(r=>r.id===song.mod.recordId),item=record?.items.find(i=>i.key===song.mod.itemKey);if(!record||!item)throw new Error('This mod is no longer enabled.');return {record,item};}
+  freeplayIcon(song){
+    if(!song.mod)return null;
+    if(!this.menuIcons.has(song.id)){
+      const {record,item}=this.item(song),entry={art:null};
+      this.menuIcons.set(song.id,entry);
+      this.archive(record).then(zip=>loadModFreeplayIcon(zip,item,song.opponent))
+        .then(art=>{entry.art=art;}).catch(()=>{});
+    }
+    return this.menuIcons.get(song.id)?.art;
+  }
   choice(song,level,instrumental='default'){const {record,item}=this.item(song);if(!item.levels.includes(level))throw new Error('This mod has no '+level+' difficulty.');return {id:song.id,name:item.name,bpm:item.bpm,level,character:item.metadata.playData?.characters?.player?.includes('pico')?'pico':'bf',characters:item.metadata.playData?.characters||{},stage:item.metadata.playData?.stage||'mainStage',album:item.metadata.playData?.album||'volume1',chartUrl:`mod:${record.id}/${item.key}/${level}`,mod:{recordId:record.id,itemKey:item.key,instrumental},previewStart:item.metadata.playData?.previewStart??15000,previewEnd:item.metadata.playData?.previewEnd??45000,ratings:item.metadata.playData?.ratings||{}};}
   resolve(choice){const record=this.records.find(r=>r.id===choice.mod?.recordId),item=record?.items.find(i=>i.key===choice.mod?.itemKey);if(!record||!item)throw new Error('Mod data is unavailable.');return {record,item};}
   async chart(choice){const {record,item}=this.resolve(choice),zip=await this.archive(record);return vsliceToClassic(item.metadata,await zip.json(item.chartPath),choice.level);}
@@ -46,7 +56,7 @@ export class ModLibrary {
   }
   async getVisuals(choice,assets){const key=choice.mod.recordId+'/'+choice.mod.itemKey+JSON.stringify(choice.visualOverrides||{});if(!this.visuals.has(key)){const {record,item}=this.resolve(choice);this.visuals.set(key,this.archive(record).then(zip=>loadModVisuals(zip,choice.visualOverrides?{...item,metadata:{...item.metadata,playData:{...item.metadata.playData,characters:choice.visualOverrides.characters,stage:choice.visualOverrides.stage}}}:item,assets,key)).then(result=>{for(const line of result.report)if(!record.report.includes(line))record.report.push(line);return result;}));}return this.visuals.get(key);}
   async enable(id,value){const r=this.records.find(r=>r.id===id);if(!r)return;r.enabled=value;await this.save(r);}
-  async remove(id){const r=this.records.find(r=>r.id===id);this.records=this.records.filter(r=>r.id!==id);if(this.db)await new Promise((resolve,reject)=>{const tx=this.db.transaction('mods','readwrite');tx.objectStore('mods').delete(id);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});const archive=await this.archives.get(id);archive?.dispose();this.archives.delete(id);for(const key of this.visuals.keys())if(key.startsWith(id+'/'))this.visuals.delete(key);return r;}
+  async remove(id){const r=this.records.find(r=>r.id===id);this.records=this.records.filter(r=>r.id!==id);if(this.db)await new Promise((resolve,reject)=>{const tx=this.db.transaction('mods','readwrite');tx.objectStore('mods').delete(id);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});const archive=await this.archives.get(id);archive?.dispose();this.archives.delete(id);for(const key of this.visuals.keys())if(key.startsWith(id+'/'))this.visuals.delete(key);for(const key of this.menuIcons.keys())if(key.startsWith('mod/'+id+'/'))this.menuIcons.delete(key);return r;}
 }
 export class ModManager {
   constructor(library,{onExit,onChange}={}){this.library=library;this.onExit=onExit;this.onChange=onChange;this.visible=false;this.busy=false;this.selectedId=null;this.root=document.createElement('section');this.root.id='mod-manager';this.root.hidden=true;this.root.setAttribute('aria-label','Mods');document.querySelector('#game').append(this.root);document.addEventListener('keydown',e=>{if(this.visible&&e.code==='Escape'){e.preventDefault();this.close();}});}

@@ -1,8 +1,8 @@
-import {expandedImage,loadExpandedAnimation} from './sky-ui.js?v=ec5289725a41d4';
-import {beatTime,drawSkyAnimation,loadSkyPolishPack} from './sky-polish.js?v=ec5289725a41d4';
-import {EXPANDED_BASE} from './expanded-content.js?v=ec5289725a41d4';
+import {expandedImage,loadExpandedAnimation} from './sky-ui.js?v=efcefb8518eb12';
+import {beatTime,drawSkyAnimation,loadSkyPolishPack} from './sky-polish.js?v=efcefb8518eb12';
+import {EXPANDED_BASE} from './expanded-content.js?v=efcefb8518eb12';
 
-import {drawRepeatingEffect,rollSecret} from './sky-effects.js?v=ec5289725a41d4';
+import {drawRepeatingEffect,makeRepeatingEffect,rollSecret} from './sky-effects.js?v=efcefb8518eb12';
 
 const mobileSounds=[[1000,'wooshSound'],[3050,'smokinSound'],[3050,'puffySound'],[5000,'wobbly',.4]];
 const candyNames=['taco','packofSkittles','popTart','lollipop','jollyRancher'];
@@ -35,6 +35,8 @@ export class SkyDetails {
         const pack=await loadSkyPolishPack();
         this.art=Object.fromEntries(await Promise.all(['angerTile','sceneHearts','angryVignette','candyGradient','tacoGradient',...candyNames]
           .filter(key=>pack[key]).map(async key=>[key,await expandedImage(pack[key])])));
+        this.repeat=Object.fromEntries(await Promise.all([['angerTile',.8],['sceneHearts',1]]
+          .filter(([key])=>this.art[key]).map(async ([key,scale])=>[key,await makeRepeatingEffect(this.art[key],scale)])));
         this.scream={...pack.scream,image:await expandedImage(pack.scream.image)};
         [this.gesture,this.cup]=await Promise.all([loadExpandedAnimation(pack.bfGesture),loadExpandedAnimation(pack.picoCup)]);
         this.audio=audio;
@@ -188,10 +190,13 @@ export class SkyDetails {
   }
 
   drawBackdrop(ctx,game,time){
-    if(game.choice.stage!=='theShiftDarkErect'||!this.art?.angerTile)return;
+    if(game.choice.stage!=='theShiftDarkErect'||!this.repeat?.angerTile)return;
     const offset=Math.max(0,time)*.075;
     ctx.save();ctx.globalAlpha=.25;ctx.globalCompositeOperation='multiply';
-    drawRepeatingEffect(ctx,this.art.angerTile,offset,offset,.8);
+    // Bilinear filtering keeps the moving texture sharp without triggering
+    // Canvas's expensive high-quality downsampler for a full-screen pass.
+    ctx.imageSmoothingQuality='low';
+    drawRepeatingEffect(ctx,this.repeat.angerTile,offset,offset);
     ctx.restore();
   }
 
@@ -217,13 +222,15 @@ export class SkyDetails {
       }
       ctx.restore();
     }
-    if(choice.stage==='theShiftScenecore'&&this.art.sceneHearts){
+    if(choice.stage==='theShiftScenecore'&&this.repeat?.sceneHearts){
       ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=.3;
-      drawRepeatingEffect(ctx,this.art.sceneHearts,time*.125,time*.125);
+      ctx.imageSmoothingQuality='low';
+      drawRepeatingEffect(ctx,this.repeat.sceneHearts,time*.125,time*.125);
       ctx.restore();
     }
     if(this.art.angryVignette&&game.skyDetails?.anger){
       ctx.save();ctx.globalAlpha=game.skyDetails.anger;
+      ctx.imageSmoothingQuality='low';
       ctx.drawImage(this.art.angryVignette,0,0,1280,720);ctx.restore();
     }
   }

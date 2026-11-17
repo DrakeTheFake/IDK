@@ -1,9 +1,21 @@
-import {clamp} from './core.js?v=ec5289725a41d4';
-import {nativeFacing} from './rhythm.js?v=ec5289725a41d4';
+import {clamp} from './core.js?v=efcefb8518eb12';
+import {nativeFacing} from './rhythm.js?v=efcefb8518eb12';
 function modAssetPath(zip,item,asset,extension){const [library,relative]=String(asset).includes(':')?String(asset).split(':',2):['',String(asset)],name=relative.replace(/^\/+/,''),ext=name.toLowerCase().endsWith('.'+extension)?'':'.'+extension;for(const candidate of [`${item.root}${library?library+'/':''}images/${name}${ext}`,`${item.root}images/${name}${ext}`,`${item.root}shared/images/${name}${ext}`,`${item.root}assets/${library?library+'/':''}images/${name}${ext}`,`${item.root}${name}${ext}`]){const found=zip.find(candidate);if(found)return found;}return zip.suffix('/images/'+name+ext)||zip.suffix('/'+name+ext);}
 function modDataPath(zip,item,type,id){for(const candidate of [`${item.root}data/${type}/${id}.json`,`${item.root}assets/data/${type}/${id}.json`]){const found=zip.find(candidate);if(found)return found;}return zip.suffix(`/data/${type}/${id}.json`);}
 async function modImage(zip,path){const img=new Image();img.src=await zip.url(path);await img.decode();if(img.width*img.height>64*1024*1024)throw new Error('Image exceeds the 64 megapixel browser texture limit.');return img;}
-function modXMLFrames(xml){if(/<!DOCTYPE/i.test(xml))throw new Error('Unsupported XML document type.');const doc=new DOMParser().parseFromString(xml,'application/xml');if(doc.querySelector('parsererror'))throw new Error('Invalid sprite XML.');return [...doc.querySelectorAll('SubTexture')].map(el=>{const out={};for(const attr of el.attributes)out[attr.name]=attr.name==='name'?attr.value:Number(attr.value);return out;}).filter(f=>f.name&&f.width>0&&f.height>0);}
+function modXMLFrames(xml){if(/<!DOCTYPE/i.test(xml))throw new Error('Unsupported XML document type.');const doc=new DOMParser().parseFromString(xml,'application/xml');if(doc.querySelector('parsererror'))throw new Error('Invalid sprite XML.');return [...doc.querySelectorAll('SubTexture')].map(el=>{const out={};for(const attr of el.attributes)out[attr.name]=attr.name==='name'?attr.value:attr.name==='rotated'?attr.value==='true':Number(attr.value);return out;}).filter(f=>f.name&&f.width>0&&f.height>0);}
+export async function loadModFreeplayIcon(zip,item,id){
+  if(!id)return null;
+  const path=modDataPath(zip,item,'characters',id);
+  if(!path)return null;
+  const {healthIcon}=await zip.json(path),iconId=healthIcon?.id||id;
+  for(const asset of ['freeplay/icons/'+id+'pixel','freeplay/icons/'+iconId+'pixel']){
+    const png=modAssetPath(zip,item,asset,'png'),xml=modAssetPath(zip,item,asset,'xml');
+    if(png&&xml)return {image:await modImage(zip,png),frames:modXMLFrames(await zip.text(xml))};
+  }
+  const png=modAssetPath(zip,item,'icons/icon-'+iconId,'png')||modAssetPath(zip,item,'icons/'+iconId,'png');
+  return png?{image:await modImage(zip,png)}:null;
+}
 const MOD_IDENTITY=[1,0,0,1,0,0];
 function modMatrixMultiply(p,q){const[a,b,c,d,x,y]=p,[e,f,g,h,u,v]=q;return[a*e+c*f,b*e+d*f,a*g+c*h,b*g+d*h,a*u+c*v+x,b*u+d*v+y];}
 function modElementMatrix(el){if(Array.isArray(el.MX))return el.MX;const m=el.M3D;if(m)return[m.m00??m[0]??1,m.m01??m[1]??0,m.m10??m[4]??0,m.m11??m[5]??1,m.m30??m[12]??0,m.m31??m[13]??0];return MOD_IDENTITY;}

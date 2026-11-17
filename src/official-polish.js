@@ -1,4 +1,4 @@
-import {eventEase} from './song-events.js?v=ec5289725a41d4';
+import {eventEase} from './song-events.js?v=efcefb8518eb12';
 
 const STREET_STAGES = new Set(['phillyStreets', 'phillyStreetsErect']);
 const CAN_ASSETS = {
@@ -123,6 +123,23 @@ export function officialStageLayout(game, stage, view) {
     };
   }
   return result;
+}
+
+export function stressSkyPartnerX(stage,config){
+  const {bf,dad,gf}=stage.characters;
+  // Center the rendered character, including the source-sheet offsets.
+  return (bf.position[0]+dad.position[0])/2-(config?.globalOffsets?.[0]||0)
+    *(gf.scale||1)*(config?.metadata?.scale||1);
+}
+
+export function stressSkyRunner(shot,index,age){
+  if(age< -2100||age>=620)return null;
+  // The first two chart directions originate at the right edge. The
+  // source sprite already faces left, so only left-edge runners flip.
+  const travelsRight=shot.d%4>=2;
+  const impactX=travelsRight?490+index%5*23:1100-index%5*23;
+  return {x:impactX+Math.min(0,age)*.84*(travelsRight?1:-1),
+    y:869+index%4*17,flip:travelsRight,scale:.82,age};
 }
 
 export function officialPartnerAnchor(id, config, position, scale, options = {}) {
