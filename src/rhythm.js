@@ -1,4 +1,4 @@
-import {beatAt,bpmAt} from './core.js?v=85a6fa2365627a';
+import {beatAt,bpmAt} from './core.js?v=5cc848c19b8f23';
 export const SIX_DIRECTIONS=[0,2,3,0,1,3];
 export const SIX_KEYS=['KeyS','KeyD','KeyF','KeyJ','KeyK','KeyL'];
 export function chartForSixKeys(chart){

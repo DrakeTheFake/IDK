@@ -1,6 +1,6 @@
 // Native V-Slice result artwork and timelines. Assets come from the user's game.
-import {EXPANDED_BASE} from './expanded-content.js?v=85a6fa2365627a';
-import {expandedJSON} from './sky-ui.js?v=85a6fa2365627a';
+import {EXPANDED_BASE} from './expanded-content.js?v=5cc848c19b8f23';
+import {expandedJSON} from './sky-ui.js?v=5cc848c19b8f23';
 // UI/game-state integration belongs to the caller; draw() returns click targets.
 const NR_DIGITS=['ZERO','ONE','TWO','THREE','FOUR','FIVE','SIX','SEVEN','EIGHT','NINE'];
 const NR_CLAMP=(n,a,b)=>Math.min(b,Math.max(a,n));

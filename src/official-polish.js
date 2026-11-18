@@ -1,4 +1,4 @@
-import {eventEase} from './song-events.js?v=85a6fa2365627a';
+import {eventEase} from './song-events.js?v=5cc848c19b8f23';
 
 const STREET_STAGES = new Set(['phillyStreets', 'phillyStreetsErect']);
 const CAN_ASSETS = {
@@ -146,7 +146,10 @@ export function officialPartnerAnchor(id, config, position, scale, options = {})
   const otis = id === 'otis-speaker';
   if (!otis && !['nene', 'nene-qt', 'nene-tankmen', 'nene-christmas', 'nene-wifeforever', 'dpz_kapi_nene'].includes(id)) return null;
   const originalOrigin = otis ? otisOrigin : regularNeneOrigin;
-  const renderedOrigin = options.bounds?.slice(0, 2) || config?.normalizedNativeOrigin || originalOrigin;
+  // Kapi uses the same Nene and A-Bot mount with a different Animate
+  // stage origin. Its normalized frames already account for that shift.
+  const renderedOrigin = id==='dpz_kapi_nene'?originalOrigin
+    :options.bounds?.slice(0, 2) || config?.normalizedNativeOrigin || originalOrigin;
   const size = options.bounds?.slice(2) || config?.logicalIdleSize || [493.62, 566.1903];
   const offsets = options.globalOffsets === false ? [0, 0] : config?.globalOffsets || [4, -89];
   const localScale = scale * (config?.metadata?.scale || 1);

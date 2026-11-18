@@ -1,7 +1,7 @@
-import {ZipArchive} from './zip.js?v=85a6fa2365627a';
-import {vsliceLevels,vsliceToClassic} from './vslice.js?v=85a6fa2365627a';
-import {loadModVisuals,loadModFreeplayIcon} from './mod-visuals.js?v=85a6fa2365627a';
-import {isBuiltInQtDuplicate} from './expanded-content.js?v=85a6fa2365627a';
+import {ZipArchive} from './zip.js?v=5cc848c19b8f23';
+import {vsliceLevels,vsliceToClassic} from './vslice.js?v=5cc848c19b8f23';
+import {loadModVisuals,loadModFreeplayIcon} from './mod-visuals.js?v=5cc848c19b8f23';
+import {isBuiltInQtDuplicate} from './expanded-content.js?v=5cc848c19b8f23';
 const MOD_EVENTS=new Set(['FocusCamera','ZoomCamera','PlayAnimation','SetCameraBop','ScrollSpeed','SetTargetBopSpeed','SetHealthIcon']);
 const MOD_EXTENSIONS=['ogg','mp3','wav'];
 const MOD_ESCAPE=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
