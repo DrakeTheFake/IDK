@@ -1,5 +1,5 @@
-import {applyHit,HIT_WINDOW} from './core.js?v=5cc848c19b8f23';
-import {EXPANDED_BASE} from './expanded-content.js?v=5cc848c19b8f23';
+import {applyHit,HIT_WINDOW} from './core.js?v=5d7ce7db8c3f4c';
+import {EXPANDED_BASE} from './expanded-content.js?v=5d7ce7db8c3f4c';
 
 export const isVamp = choice => choice?.source === 'vs-vamp';
 export const vampPose = (art,id,name) => art?.cutscenes[(id+'_'+name).replaceAll('-','_')];

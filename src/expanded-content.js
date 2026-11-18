@@ -12,6 +12,7 @@ export const EXPANDED_WEEKS = [
   {id:'DpzKapiKapiWeek2',name:'MEEEEOW',songs:['dpz_meowgen','dpz_scratch-post'],character:'bf'},
   {id:'DpzKapikapiWeekGNW',name:'PLEASE NERF UP-B...',songs:['dpz_flatzone'],character:'bf'},
   {id:'DpzKapiKapiWeekPyoro',name:'NYO NYO',songs:['dpz_pyoro'],character:'bf'},
+  {id:'ImpostorWeek1',name:'POLUS PROBLEMS',songs:['sussus-moogus','sabotage','meltdown'],color:'#BB2D30',character:'bf'},
 ];
 
 export function playerIdentity(id='') {

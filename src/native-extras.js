@@ -1,6 +1,6 @@
 // Full native character symbol trees, Pico gun backing card, and Erect stage.
 // These helpers draw only; parent retains all input, score and scene state.
-import {drawSprite} from './sprite-rendering.js?v=5cc848c19b8f23';
+import {drawSprite} from './sprite-rendering.js?v=5d7ce7db8c3f4c';
 
 const NE_CLAMP=(v,a,b)=>Math.min(b,Math.max(a,v));
 export class NativeExtras {

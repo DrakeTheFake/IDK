@@ -1,5 +1,13 @@
 export const PATCH_NOTES = [
   {
+    title:'VS. Impostor Week 1',
+    sections:[
+      ['Polus Problems','Play Sussus Moogus, Sabotage, and Meltdown with their original Polus stages and Story Mode cutscenes.'],
+      ['Freeplay','Choose Pico and select Hard to play Sussus Moogus (Pico Mix).'],
+      ['Arcade Showdown','Kapi’s dance pad sits on the stage. The HUD stays still and note splashes stay within their lane.'],
+    ],
+  },
+  {
     title:'VS. Kapi Arcade Showdown',
     sections:[
       ['Story Mode','Play both Kapi weeks, Flatzone, and Pyoro with the installed mod’s stage art and dialogue.'],

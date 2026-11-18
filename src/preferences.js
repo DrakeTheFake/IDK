@@ -1,4 +1,4 @@
-import {CALIBRATION_BEAT as BEAT,CalibrationAudio,medianDelay} from './audio-timing.js?v=5cc848c19b8f23';
+import {CALIBRATION_BEAT as BEAT,CalibrationAudio,medianDelay} from './audio-timing.js?v=5d7ce7db8c3f4c';
 const MEDIA = 'assets/preferences/';
 const WIDTH = 1280;
 const HEIGHT = 720;
@@ -32,7 +32,7 @@ const GAMEPAD = {
   ...Object.fromEntries([4, 14, 13, 0, 1, 5].map((button, lane) => [SIX_NOTES[lane], [button]])),
 };
 
-import {SECRET_CHANCES} from './sky-effects.js?v=5cc848c19b8f23';
+import {SECRET_CHANCES} from './sky-effects.js?v=5d7ce7db8c3f4c';
 
 export const PREFERENCE_DEFAULTS = Object.freeze({
   naughtyness: true, strumlineBackground: 0, flashingLights: true, cameraZooms: true,

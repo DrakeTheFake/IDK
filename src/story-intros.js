@@ -2,6 +2,7 @@
 // Parent draws its stage first, then draw(ctx,{now}); parent starts countdown at done=true.
 const STORY_INTRO_CLAMP=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
 const STORY_INTRO_STEP=(x,n)=>Math.floor(STORY_INTRO_CLAMP(x)*n)/n;
+const isModDialogue=id=>/^(redux|kapi|impostor)-dialogue-/.test(id);
 function storyIntroColor(value){const v=String(value||'#000000').replace('#','');return v.length===8?{rgb:'#'+v.slice(2),alpha:parseInt(v.slice(0,2),16)/255}:{rgb:'#'+v,alpha:1};}
 function storyIntroSubtitles(source){const time=t=>{const [h,m,ss]=t.split(':');return(Number(h)*3600+Number(m)*60+Number(ss.replace(',','.')))*1000;};return String(source||'').trim().split(/\r?\n\s*\r?\n/).flatMap(block=>{const lines=block.split(/\r?\n/),index=lines.findIndex(line=>line.includes('-->'));if(index<0)return[];const [a,b]=lines[index].split('-->').map(s=>s.trim());return[{start:time(a),end:time(b),text:lines.slice(index+1).join(' ')}];});}
 
@@ -10,7 +11,7 @@ export class StoryIntros {
     this.base=base;this.ready=false;this.done=true;this.phase='inactive';this.images={};this.groups=new Map();this.sounds={};this.textPool=[];this.volume=0.7;this.cameraZoom=1;this.cameraFocus=null;this.hudAlpha=1;
   }
   async load(songId){
-    if(/^(redux|kapi)-dialogue-/.test(songId)){
+    if(isModDialogue(songId)){
       await this.load('senpai');
       const mod=songId.split('-')[0];
       this.modDialogue??=new Map();
@@ -68,7 +69,7 @@ export class StoryIntros {
   static shouldPlay(songId,{story=true,character='bf',variation='',retry=false,charting=false}={}){
     if(songId==='eggnog-erect-outro')return !charting;
     if(retry||charting)return false;
-    if(/^(redux|kapi)-dialogue-/.test(songId))return story;
+    if(isModDialogue(songId))return story;
     if(['senpai-sky','roses-sky','thorns-sky'].includes(songId))return true;
     if(songId==='winter-horrorland')return true;
     if(!['senpai','roses','thorns'].includes(songId))return false;
@@ -87,7 +88,7 @@ export class StoryIntros {
       if(!this.pack.eggnog)throw new Error('Call await storyIntros.load("eggnog-erect-outro") first.');
       this.phase='eggnog-outro';this.introDuration=16000;this.cameraStart=cameraStart;this.cameraStartZoom=cameraStartZoom;this.showSubtitles=subtitles;this.subtitleEntries=storyIntroSubtitles(this.pack.eggnog.subtitles);this.hideActors=['opponent'];this.hideProps=['santa'];this.skipArmedAt=null;this.skipTextAt=null;this.shotPlayed=false;this.effect('santa_emotion');return true;
     }
-    if(/^(redux|kapi)-dialogue-/.test(songId))this.startDialogue(now);
+    if(isModDialogue(songId))this.startDialogue(now);
     else if(songId.startsWith('roses')){this.effect('ANGRY_TEXT_BOX');this.startDialogue(now);}
     else if(songId==='winter-horrorland')this.introDuration=100+(this.pack.audio.Lights_Turn_On.durationMs||4643);
     else if(songId==='thorns')this.introDuration=reducedMotion?250:2100+(this.pack.audio.Senpai_Dies.durationMs||7333)+1600;
@@ -112,7 +113,9 @@ export class StoryIntros {
   startPage(now,first=false){
     const previous=this.page,page=this.pages[this.pageIndex];this.page=page;this.forcedFull=false;this.typedChars=page.prefix.length;this.lineAt=now;
     const box=this.pack.boxes[page.entry.box],sameEntry=previous?.entryIndex===page.entryIndex;
-    this.boxAnimation=first?(page.entry.boxAnimation||'enter'):sameEntry?'speaking':'click';this.boxAt=now;
+    this.boxAnimation=this.songId.startsWith('impostor-dialogue-')?page.entry.boxAnimation:
+      first?(page.entry.boxAnimation||'enter'):sameEntry?'speaking':'click';
+    this.boxAt=now;
     this.typingAt=now+(sameEntry?0:this.animationDuration(box,this.boxAnimation));this.speakerAt=this.typingAt;
     this.completedAt=null;
     if(page.entry.box==='roses'&&!sameEntry)this.effect('textboxClick',0.6);
@@ -234,8 +237,12 @@ export class StoryIntros {
     let boxAnimation=this.boxAnimation,boxTime=now-this.boxAt;
     if(!outro&&this.completedAt!==null&&boxTime>=this.animationDuration(box,'sentenceEnd')){boxTime-=this.animationDuration(box,'sentenceEnd');boxAnimation='idle';}
     else if(!outro&&now>=this.typingAt&&this.completedAt===null){boxAnimation='speaking';boxTime=now-this.typingAt;}
+    if(this.songId.startsWith('impostor-dialogue-')){
+      boxAnimation=entry.boxAnimation;
+      boxTime=now-this.lineAt;
+    }
     this.drawAnimation(ctx,box,boxAnimation,boxTime,640+(box.offsets?.[0]||0),360+(box.offsets?.[1]||0),box.scale||1);
-    if(!outro&&now>=this.typingAt){const style=box.text||{},text=this.currentText(now),size=style.size||32,x=640+(box.offsets?.[0]||0)+(style.offsets?.[0]||0),y=360+(box.offsets?.[1]||0)+(style.offsets?.[1]||0);const font=this.songId.startsWith('kapi-dialogue-')?'KapiDialogue':'StoryPixel';ctx.font=`${size}px ${font}, monospace`;ctx.textBaseline='top';const lines=this.wrapText(ctx,text,style.width||800),shadow=storyIntroColor(style.shadowColor||'#00000000');for(const [i,line] of lines.entries()){if((style.shadowWidth??2)>0&&shadow.alpha){ctx.fillStyle=shadow.rgb;ctx.fillText(line,x+(style.shadowWidth??2),y+i*size*1.22+(style.shadowWidth??2));}ctx.fillStyle=storyIntroColor(style.color||'#000').rgb;ctx.fillText(line,x,y+i*size*1.22);}}
+    if(!outro&&now>=this.typingAt){const style=box.text||{},text=this.currentText(now),size=style.size||32,x=640+(box.offsets?.[0]||0)+(style.offsets?.[0]||0),y=360+(box.offsets?.[1]||0)+(style.offsets?.[1]||0);const font=this.songId.startsWith('kapi-dialogue-')?'KapiDialogue':this.songId.startsWith('impostor-dialogue-')?'Arial':'StoryPixel';ctx.font=`${size}px ${font}, monospace`;ctx.textBaseline='top';const lines=this.wrapText(ctx,text,style.width||800),shadow=storyIntroColor(style.shadowColor||'#00000000');for(const [i,line] of lines.entries()){if((style.shadowWidth??2)>0&&shadow.alpha){ctx.fillStyle=shadow.rgb;ctx.fillText(line,x+(style.shadowWidth??2),y+i*size*1.22+(style.shadowWidth??2));}ctx.fillStyle=storyIntroColor(style.color||'#000').rgb;ctx.fillText(line,x,y+i*size*1.22);}}
     ctx.font='18px monospace';ctx.fillStyle='#fff';ctx.strokeStyle='#000';ctx.lineWidth=4;const hint=outro?'':`${speaker?.name||entry.speaker}  ·  ENTER / TAP: CONTINUE     ESC: SKIP`;ctx.strokeText(hint,24,686);ctx.fillText(hint,24,686);ctx.restore();
     return[{id:'dialogue-advance',label:now<this.typingAt||this.currentText(now).length<this.page.text.length?'Complete dialogue text':'Next dialogue line',x:0,y:0,w:1280,h:720,action:'advance'},{id:'dialogue-skip',label:'Skip dialogue',x:1070,y:10,w:200,h:64,action:'skip'}];
   }

@@ -1,4 +1,4 @@
-import {clamp} from './core.js?v=5cc848c19b8f23';
+import {clamp} from './core.js?v=5d7ce7db8c3f4c';
 
 export const isKapi=choice=>choice?.source==='arcade-showdown';
 export const KAPI_LANGUAGES={english:'',spanish:'-es',portuguese:'-pt',russian:'-ru'};
@@ -15,6 +15,12 @@ export function kapiIntro(choice){
 }
 
 export const isPyoro=choice=>isKapi(choice)&&choice.kapiSong==='dpz_pyoro';
+export function kapiPadPosition(choice,id,position){
+  if(!isKapi(choice)||!['dpz_kapi','dpz_kapi-angry'].includes(id)||!choice.stage?.startsWith('dpz_kapiArcade'))
+    return position;
+  // The pad is part of the character sheet. Move the character and pad as one.
+  return [position[0],position[1]+102];
+}
 const cityCues=[512,768,1024,1408,1792];
 
 export function kapiStageProp(prop,choice,beat,time,art){
