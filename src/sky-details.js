@@ -1,8 +1,8 @@
-import {expandedImage,loadExpandedAnimation} from './sky-ui.js?v=5d7ce7db8c3f4c';
-import {beatTime,drawSkyAnimation,loadSkyPolishPack} from './sky-polish.js?v=5d7ce7db8c3f4c';
-import {EXPANDED_BASE} from './expanded-content.js?v=5d7ce7db8c3f4c';
+import {expandedImage,loadExpandedAnimation} from './sky-ui.js?v=d0aa7fd313ffa9';
+import {beatTime,drawSkyAnimation,loadSkyPolishPack} from './sky-polish.js?v=d0aa7fd313ffa9';
+import {EXPANDED_BASE} from './expanded-content.js?v=d0aa7fd313ffa9';
 
-import {drawRepeatingEffect,makeRepeatingEffect,rollSecret} from './sky-effects.js?v=5d7ce7db8c3f4c';
+import {drawRepeatingEffect,makeRepeatingEffect,rollSecret} from './sky-effects.js?v=d0aa7fd313ffa9';
 
 const mobileSounds=[[1000,'wooshSound'],[3050,'smokinSound'],[3050,'puffySound'],[5000,'wobbly',.4]];
 const candyNames=['taco','packofSkittles','popTart','lollipop','jollyRancher'];

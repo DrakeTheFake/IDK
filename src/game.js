@@ -1,40 +1,40 @@
-import {SONGS,WEEKS,bpmAt,dancePeriod,DIFFICULTIES,DEFAULT_SETTINGS,HIT_WINDOW,clamp,readJSON,parseChart,beatAt,nearestNote,makeStats,applyHit,applyMiss,accuracy,rank,normalizeSettings,healthAfterOpponentNote} from './core.js?v=5d7ce7db8c3f4c';
-import {builtinTrackOffsets} from './builtin-audio.js?v=5d7ce7db8c3f4c';
-import {songIntro,songOutro,pixelStage,rosesFade} from './story-flow.js?v=5d7ce7db8c3f4c';
-import {ExpandedContent,EXPANDED_BASE,EXPANDED_WEEKS,playerIdentity} from './expanded-content.js?v=5d7ce7db8c3f4c';
-import {ExpandedCutscenes,expandedIntro,expandedOutro,expandedStageIntro,expandedCaptions,scriptedCamera,rollSkyPicoShot,blissfulGreeting} from './expanded-cutscenes.js?v=5d7ce7db8c3f4c';
-import {SkyGallery,expandedImage,expandedJSON,loadExpandedAnimation} from './sky-ui.js?v=5d7ce7db8c3f4c';
-import {expandedNote,drawExpandedRain} from './expanded-gameplay.js?v=5d7ce7db8c3f4c';
-import {PATCH_NOTES} from './patch-notes.js?v=5d7ce7db8c3f4c';
-import {rollSecret} from './sky-effects.js?v=5d7ce7db8c3f4c';
-import {SkyDetails} from './sky-details.js?v=5d7ce7db8c3f4c';
-import {SkyPolish,drawSkyAnimation} from './sky-polish.js?v=5d7ce7db8c3f4c';
-import {actorCameraPoint,nativeChartCamera} from './stage-camera.js?v=5d7ce7db8c3f4c';
-import {officialStageLayout,officialPartnerAnchor,drawOfficialStageFX,officialRequiredSounds,canFire,isOfficialCanNote,stressSkyPartnerX,stressSkyRunner} from './official-polish.js?v=5d7ce7db8c3f4c';
-import {PreferencesMenu,normalizePreferences,bindingFor,noteLaneFor,GamepadPoller,tankmanDeathQuote,naughtyAnimation,skyDeathSounds,ComboFeedback,drawDebugDisplay} from './preferences.js?v=5d7ce7db8c3f4c';
-import {Assets} from './assets.js?v=5d7ce7db8c3f4c';
-import {AudioEngine} from './audio.js?v=5d7ce7db8c3f4c';
-import {ChartEditor} from './editor.js?v=5d7ce7db8c3f4c';
-import {installNativeEditor} from './native-editor.js?v=5d7ce7db8c3f4c';
-import {chartForSixKeys,SIX_DIRECTIONS,partnerDanceFrame,holdProgress,mobileLaneRegion} from './rhythm.js?v=5d7ce7db8c3f4c';
-import {NativeExtras} from './native-extras.js?v=5d7ce7db8c3f4c';
-import {NativeResults,nativeResultRank,nativeCompletion,predictedRank} from './native-results.js?v=5d7ce7db8c3f4c';
-import {StoryIntros} from './story-intros.js?v=5d7ce7db8c3f4c';
-import {PixelUI} from './pixel-ui.js?v=5d7ce7db8c3f4c';
-import {NativeContent} from './native-content.js?v=5d7ce7db8c3f4c';
-import {isSkyRedux,reduxIntro,reduxEnding,reduxStageFrame,reduxProp,reduxStereoPosition} from './sky-redux.js?v=5d7ce7db8c3f4c';
-import {isKapi,isPyoro,kapiIntro,kapiStageProp,kapiPresentation,kapiReceptor,kapiDialogue,kapiPadPosition} from './kapi.js?v=5d7ce7db8c3f4c';
-import {isImpostorWeek,impostorIntro,createImpostorWeek,updateImpostorEvent,impostorCameraPush,impostorFlash,syncImpostorVideo,closeImpostorVideo} from './impostor.js?v=5d7ce7db8c3f4c';
-import {TouchControls} from './touch-controls.js?v=5d7ce7db8c3f4c';
-import {ModernFreeplay} from './modern-freeplay.js?v=5d7ce7db8c3f4c';
-import {CharacterSelect} from './character-select.js?v=5d7ce7db8c3f4c';
-import {SceneTransitions} from './transitions.js?v=5d7ce7db8c3f4c';
-import {updateChartEvents} from './song-events.js?v=5d7ce7db8c3f4c';
-import {drawABot} from './abot.js?v=5d7ce7db8c3f4c';
-import {ModLibrary,ModManager} from './mods.js?v=5d7ce7db8c3f4c';
-import {drawModCharacter,drawModStageProps} from './mod-visuals.js?v=5d7ce7db8c3f4c';
-import {isVamp,createVampGameplay,vampHit,updateVampNotes,vampStageCue,vampSceneActors,vampQuote,vampAtmosphere,vampPose} from './vamp.js?v=5d7ce7db8c3f4c';
-import {isQtRewired,createQtGameplay,dodgeQt,updateQt,closeQtVideo,qtProp,qtScene,qtRequiredArt,qtDancePose,qtPresentation,qtSounds} from './qt-rewired.js?v=5d7ce7db8c3f4c';
+import {SONGS,WEEKS,bpmAt,dancePeriod,DIFFICULTIES,DEFAULT_SETTINGS,HIT_WINDOW,clamp,readJSON,parseChart,beatAt,nearestNote,makeStats,applyHit,applyMiss,accuracy,rank,normalizeSettings,healthAfterOpponentNote} from './core.js?v=d0aa7fd313ffa9';
+import {builtinTrackOffsets} from './builtin-audio.js?v=d0aa7fd313ffa9';
+import {songIntro,songOutro,pixelStage,rosesFade} from './story-flow.js?v=d0aa7fd313ffa9';
+import {ExpandedContent,EXPANDED_BASE,EXPANDED_WEEKS,playerIdentity} from './expanded-content.js?v=d0aa7fd313ffa9';
+import {ExpandedCutscenes,expandedIntro,expandedOutro,expandedStageIntro,expandedCaptions,scriptedCamera,rollSkyPicoShot,blissfulGreeting} from './expanded-cutscenes.js?v=d0aa7fd313ffa9';
+import {SkyGallery,expandedImage,expandedJSON,loadExpandedAnimation} from './sky-ui.js?v=d0aa7fd313ffa9';
+import {expandedNote,drawExpandedRain} from './expanded-gameplay.js?v=d0aa7fd313ffa9';
+import {PATCH_NOTES} from './patch-notes.js?v=d0aa7fd313ffa9';
+import {rollSecret} from './sky-effects.js?v=d0aa7fd313ffa9';
+import {SkyDetails} from './sky-details.js?v=d0aa7fd313ffa9';
+import {SkyPolish,drawSkyAnimation} from './sky-polish.js?v=d0aa7fd313ffa9';
+import {actorCameraPoint,nativeChartCamera} from './stage-camera.js?v=d0aa7fd313ffa9';
+import {officialStageLayout,officialPartnerAnchor,drawOfficialStageFX,officialRequiredSounds,canFire,isOfficialCanNote,stressSkyPartnerX,stressSkyRunner} from './official-polish.js?v=d0aa7fd313ffa9';
+import {PreferencesMenu,normalizePreferences,bindingFor,noteLaneFor,GamepadPoller,tankmanDeathQuote,naughtyAnimation,skyDeathSounds,ComboFeedback,drawDebugDisplay} from './preferences.js?v=d0aa7fd313ffa9';
+import {Assets} from './assets.js?v=d0aa7fd313ffa9';
+import {AudioEngine} from './audio.js?v=d0aa7fd313ffa9';
+import {ChartEditor} from './editor.js?v=d0aa7fd313ffa9';
+import {installNativeEditor} from './native-editor.js?v=d0aa7fd313ffa9';
+import {chartForSixKeys,SIX_DIRECTIONS,partnerDanceFrame,holdProgress,mobileLaneRegion} from './rhythm.js?v=d0aa7fd313ffa9';
+import {NativeExtras} from './native-extras.js?v=d0aa7fd313ffa9';
+import {NativeResults,nativeResultRank,nativeCompletion,predictedRank} from './native-results.js?v=d0aa7fd313ffa9';
+import {StoryIntros} from './story-intros.js?v=d0aa7fd313ffa9';
+import {PixelUI} from './pixel-ui.js?v=d0aa7fd313ffa9';
+import {NativeContent} from './native-content.js?v=d0aa7fd313ffa9';
+import {isSkyRedux,reduxIntro,reduxEnding,reduxStageFrame,reduxProp,reduxStereoPosition} from './sky-redux.js?v=d0aa7fd313ffa9';
+import {isKapi,isPyoro,kapiIntro,kapiStageProp,kapiPresentation,kapiReceptor,kapiDialogue,kapiPadPosition,noteAnimationFrame} from './kapi.js?v=d0aa7fd313ffa9';
+import {isImpostorWeek,impostorIntro,createImpostorWeek,updateImpostorEvent,impostorCameraPush,impostorFlash,syncImpostorVideo,closeImpostorVideo} from './impostor.js?v=d0aa7fd313ffa9';
+import {TouchControls} from './touch-controls.js?v=d0aa7fd313ffa9';
+import {ModernFreeplay} from './modern-freeplay.js?v=d0aa7fd313ffa9';
+import {CharacterSelect} from './character-select.js?v=d0aa7fd313ffa9';
+import {SceneTransitions} from './transitions.js?v=d0aa7fd313ffa9';
+import {updateChartEvents} from './song-events.js?v=d0aa7fd313ffa9';
+import {drawABot} from './abot.js?v=d0aa7fd313ffa9';
+import {ModLibrary,ModManager} from './mods.js?v=d0aa7fd313ffa9';
+import {drawModCharacter,drawModStageProps} from './mod-visuals.js?v=d0aa7fd313ffa9';
+import {isVamp,createVampGameplay,vampHit,updateVampNotes,vampStageCue,vampSceneActors,vampQuote,vampAtmosphere,vampPose} from './vamp.js?v=d0aa7fd313ffa9';
+import {isQtRewired,createQtGameplay,dodgeQt,updateQt,closeQtVideo,qtProp,qtScene,qtRequiredArt,qtDancePose,qtPresentation,qtSounds} from './qt-rewired.js?v=d0aa7fd313ffa9';
 
 const canvas=document.querySelector('#screen'),ctx=canvas.getContext('2d',{alpha:false});
 const buttonLayer=document.querySelector('#buttons'),announcement=document.querySelector('#announcement');
@@ -1012,8 +1012,7 @@ function drawNote(lane,x,y,scale=0.7,state='note',time=0,alpha=1){
    const {entry,animation}=appearance,frames=assets.frames(entry.atlas,animation.prefix);
    if(frames.length){
      const age=state==='note'?Math.max(0,game.time):time;
-     const offset=Math.floor(age*(animation.frameRate||24)/1000);
-     const frame=frames[animation.looped?offset%frames.length:Math.min(frames.length-1,offset)];
+     const frame=noteAnimationFrame(frames,animation,age);
      const s=scale/.7*(entry.scale||.7);
      ctx.save();
      ctx.translate(x+56,y+56);
@@ -1577,7 +1576,7 @@ function drawGameplay(){
  if(shiftFade&&game.beat>=shiftFade)rect(0,0,1280,720,'rgba(0,0,0,'+clamp((game.beat-shiftFade)*300/2000,0,1)+')');
  if(game.choice.baseSong==='sky'&&game.choice.variant==='erect'&&game.beat>=224&&game.beat<352){const gradient=ctx.createRadialGradient(640,360,170,640,360,730);gradient.addColorStop(0,'#0000');gradient.addColorStop(1,'#000c');ctx.fillStyle=gradient;ctx.fillRect(0,0,1280,720);}
  const storyFade=rosesFade(SONGS[songIndex].id,{story,variant:game.choice.variant,time});if(storyFade.red&&settings.flashingLights!==false)rect(0,0,1280,720,'rgba(255,27,49,'+storyFade.red+')');ctx.save();
- const hudBump=mobile||isKapi(game.choice)||settings.reducedMotion||settings.cameraZooms===false?0:(game.cameraBump||0)*.65;
+ const hudBump=mobile||settings.reducedMotion||settings.cameraZooms===false?0:(game.cameraBump||0)*.65;
  if(hudBump){ctx.translate(640,360);ctx.scale(1+hudBump,1+hudBump);ctx.translate(-640,-360);}
  ctx.globalAlpha*=storyFade.hud*(game.hudFadeAt?clamp((frameTime-game.hudFadeAt)/2000,0,1):1);if(pixelStage(game.choice))ctx.imageSmoothingEnabled=false;if(settings.strumlineBackground>0){
     const x=mobile?0:laneX(0,true)-12,w=mobile?1280:laneX(count-1,true)-x+108;
@@ -1648,13 +1647,6 @@ function drawGameplay(){
      ctx.save();
      if(custom.isPixel)ctx.imageSmoothingEnabled=false;
      const centerX=laneX(splash.lane,true)+56,centerY=y+56;
-     if(isKapi(game.choice)){
-       // Kapi's splash frames are much wider than a lane. Keep their glow
-       // off the adjacent receptors and score display.
-       ctx.beginPath();
-       ctx.rect(centerX-55,centerY-65,110,130);
-       ctx.clip();
-     }
      assets.draw(ctx,custom.atlas,frame,centerX-(frame.frameWidth||frame.width)*scale/2,
        centerY-(frame.frameHeight||frame.height)*scale/2,scale,custom.alpha??1);
      ctx.restore();

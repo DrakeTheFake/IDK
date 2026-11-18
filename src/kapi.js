@@ -1,4 +1,4 @@
-import {clamp} from './core.js?v=5d7ce7db8c3f4c';
+import {clamp} from './core.js?v=d0aa7fd313ffa9';
 
 export const isKapi=choice=>choice?.source==='arcade-showdown';
 export const KAPI_LANGUAGES={english:'',spanish:'-es',portuguese:'-pt',russian:'-ru'};
@@ -67,4 +67,9 @@ export function kapiReceptor(style,lane,state){
   const dir=['left','down','up','right'][lane],entry=state==='note'?style.note:style.noteStrumline;
   const key=state==='note'?dir:dir+state[0].toUpperCase()+state.slice(1);
   return entry?.data?.[key]?{entry,animation:entry.data[key]}:null;
+}
+
+export function noteAnimationFrame(frames,animation,elapsed){
+  const index=Math.floor(Math.max(0,elapsed)*(animation.frameRate||24)/1000);
+  return frames[animation.looped?index%frames.length:Math.min(frames.length-1,index)];
 }

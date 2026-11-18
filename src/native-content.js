@@ -1,9 +1,9 @@
-import {bpmAt} from './core.js?v=5d7ce7db8c3f4c';
-import {nativeFacing} from './rhythm.js?v=5d7ce7db8c3f4c';
-import {officialRequiredAssets} from './official-polish.js?v=5d7ce7db8c3f4c';
-import {naughtyAnimation} from './preferences.js?v=5d7ce7db8c3f4c';
-import {drawSkyAnimation} from './sky-polish.js?v=5d7ce7db8c3f4c';
-import {loadExpandedAnimation} from './sky-ui.js?v=5d7ce7db8c3f4c';
+import {bpmAt} from './core.js?v=d0aa7fd313ffa9';
+import {nativeFacing} from './rhythm.js?v=d0aa7fd313ffa9';
+import {officialRequiredAssets} from './official-polish.js?v=d0aa7fd313ffa9';
+import {naughtyAnimation} from './preferences.js?v=d0aa7fd313ffa9';
+import {drawSkyAnimation} from './sky-polish.js?v=d0aa7fd313ffa9';
+import {loadExpandedAnimation} from './sky-ui.js?v=d0aa7fd313ffa9';
 
 const PICO_BASE_LABELS={idle:'Idle',singLEFT:'Left',singDOWN:'Down',singUP:'Up',singRIGHT:'Right'};
 const PICO_ACTION_LABELS={intro1:'Pissed Off',intro2:'Shoot and Return',cock:'Gun Reload',shoot:'Shoot',

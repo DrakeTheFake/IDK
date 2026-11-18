@@ -4,7 +4,7 @@ export const PATCH_NOTES = [
     sections:[
       ['Polus Problems','Play Sussus Moogus, Sabotage, and Meltdown with their original Polus stages and Story Mode cutscenes.'],
       ['Freeplay','Choose Pico and select Hard to play Sussus Moogus (Pico Mix).'],
-      ['Arcade Showdown','Kapi’s dance pad sits on the stage. The HUD stays still and note splashes stay within their lane.'],
+      ['Arcade Showdown','Kapi’s dance pad sits on the stage. Opponent note confirmations start on a valid animation frame.'],
     ],
   },
   {
