@@ -7,7 +7,11 @@ export const EXPANDED_WEEKS = [
   {id:'QTWeek',name:'YOUR FAVORITE ROBOT',songs:['blissful','obliterated'],color:'#ff7ec8',character:'bf'},
   {id:'CG5Collab',name:"ROCKIN' THEM BEATS",songs:['go-go-go'],color:'#ff2882',character:'bf'},
   {id:'redux-skyweek1',name:'HEARTBREAK HAVOC',songs:['redux-wife-forever','redux-sky','redux-manifest'],color:'#f6a3d8',character:'bf'},
-  {id:'redux-skyweek2',name:'SKY CLASSIC',songs:['redux-wife-forever-c','redux-sky-c','redux-manifest-c'],color:'#b3dfd8',character:'bf'}
+  {id:'redux-skyweek2',name:'SKY CLASSIC',songs:['redux-wife-forever-c','redux-sky-c','redux-manifest-c'],color:'#b3dfd8',character:'bf'},
+  {id:'DpzKapiKapiWeek1',name:'B-B-BREAK DOWN!',songs:['dpz_wocky','dpz_beathoven','dpz_hairball','dpz_nyaw'],character:'bf'},
+  {id:'DpzKapiKapiWeek2',name:'MEEEEOW',songs:['dpz_meowgen','dpz_scratch-post'],character:'bf'},
+  {id:'DpzKapikapiWeekGNW',name:'PLEASE NERF UP-B...',songs:['dpz_flatzone'],character:'bf'},
+  {id:'DpzKapiKapiWeekPyoro',name:'NYO NYO',songs:['dpz_pyoro'],character:'bf'},
 ];
 
 export function playerIdentity(id='') {
@@ -16,6 +20,12 @@ export function playerIdentity(id='') {
 }
 
 export function isBuiltInQtDuplicate(record,item,content) {
+  if(record.packageId==='dpz_kapi_port'){
+    const variation=item.variation==='default'?'classic':item.variation;
+    const key=variation==='erect'?item.songId+'-erect':item.songId;
+    return Boolean(content.songs.get(key)?.some(song=>song.source==='arcade-showdown'&&song.variant===variation
+      &&song.stage===item.metadata.playData?.stage&&item.levels.every(level=>song.difficulties.includes(level))));
+  }
   if(record.packageId!=='qt-rewired' && !/^qt\s*:?\s*rewired$/i.test(record.title))return false;
   const variation=item.variation==='default'?'classic':item.variation;
   const candidates=content.songs.get(variation==='legacy'?item.songId+'-legacy':item.songId);

@@ -1,4 +1,4 @@
-import {eventEase} from './song-events.js?v=efcefb8518eb12';
+import {eventEase} from './song-events.js?v=85a6fa2365627a';
 
 const STREET_STAGES = new Set(['phillyStreets', 'phillyStreetsErect']);
 const CAN_ASSETS = {
@@ -144,7 +144,7 @@ export function stressSkyRunner(shot,index,age){
 
 export function officialPartnerAnchor(id, config, position, scale, options = {}) {
   const otis = id === 'otis-speaker';
-  if (!otis && !['nene', 'nene-qt', 'nene-tankmen', 'nene-christmas', 'nene-wifeforever'].includes(id)) return null;
+  if (!otis && !['nene', 'nene-qt', 'nene-tankmen', 'nene-christmas', 'nene-wifeforever', 'dpz_kapi_nene'].includes(id)) return null;
   const originalOrigin = otis ? otisOrigin : regularNeneOrigin;
   const renderedOrigin = options.bounds?.slice(0, 2) || config?.normalizedNativeOrigin || originalOrigin;
   const size = options.bounds?.slice(2) || config?.logicalIdleSize || [493.62, 566.1903];

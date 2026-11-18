@@ -1,4 +1,4 @@
-import {CALIBRATION_BEAT as BEAT,CalibrationAudio,medianDelay} from './audio-timing.js?v=efcefb8518eb12';
+import {CALIBRATION_BEAT as BEAT,CalibrationAudio,medianDelay} from './audio-timing.js?v=85a6fa2365627a';
 const MEDIA = 'assets/preferences/';
 const WIDTH = 1280;
 const HEIGHT = 720;
@@ -32,7 +32,7 @@ const GAMEPAD = {
   ...Object.fromEntries([4, 14, 13, 0, 1, 5].map((button, lane) => [SIX_NOTES[lane], [button]])),
 };
 
-import {SECRET_CHANCES} from './sky-effects.js?v=efcefb8518eb12';
+import {SECRET_CHANCES} from './sky-effects.js?v=85a6fa2365627a';
 
 export const PREFERENCE_DEFAULTS = Object.freeze({
   naughtyness: true, strumlineBackground: 0, flashingLights: true, cameraZooms: true,
@@ -43,6 +43,7 @@ export const PREFERENCE_DEFAULTS = Object.freeze({
   freeplayStoryCutscenes: false, skySecretChance: 'Original',
   songRate:1, healthDrain:0, healthDrainLethality:'safe', missDamage:1, instantFail:false, mirrorNotes:false, noFail:false,
   qtLanguage: 'english', qtSawbladeMode: 'default', qtPlushieButton: true,
+  kapiLanguage:'english',
   vampKey:'Space', vampLanguage:'english',
 });
 
@@ -68,6 +69,7 @@ export function normalizePreferences(raw = {}, base = {}) {
   result.vampKey = validKey(raw.vampKey) ? raw.vampKey : 'Space';
   result.vampLanguage = ['english','japanese','spanish'].includes(raw.vampLanguage) ? raw.vampLanguage : 'english';
   result.qtLanguage = raw.qtLanguage === 'spanish' ? 'spanish' : 'english';
+  result.kapiLanguage=['spanish','portuguese','russian'].includes(raw.kapiLanguage)?raw.kapiLanguage:'english';
   result.bindings = {keyboard: {}, gamepad: {}};
   for (const [device, defaults] of Object.entries({keyboard: KEYBOARD, gamepad: GAMEPAD})) {
     for (const [action, values] of Object.entries(defaults)) {
@@ -219,7 +221,7 @@ const REWIRED = [
 ];
 
 const ROOT_PAGES = [['preferences', 'Preferences'], ['controls', 'Controls'], ['rewired', 'Rewired Options'],
-  ['lag', 'Lag Adjustment'], ['save', 'Save Data Options'], ['sky', 'Sky Reborn'], ['vamp','VS. Vamp']];
+  ['lag', 'Lag Adjustment'], ['save', 'Save Data Options'], ['sky', 'Sky Reborn'], ['vamp','VS. Vamp'], ['kapi','Arcade Showdown']];
 
 const BUTTON_LABELS = ['A','B','X','Y','LB','RB','LT','RT','Select','Start','L3','R3','D-Pad Up','D-Pad Down','D-Pad Left','D-Pad Right','Home'];
 const STICK_LABELS = ['Left','Down','Up','Right'];
@@ -397,6 +399,11 @@ export class PreferencesMenu {
     if (this.page === 'vamp') return [
       choices('vampLanguage','Voiceline Language','Choose the language for the original VS. Vamp game over voices.', ['english','japanese','spanish'],titleCase),
       action('Middle Note Key: '+inputLabel(this.settings.vampKey),()=>{this.rebind={action:'vampKey',device:'keyboard'};}),
+      action('Exit',()=>this.back()),
+    ];
+    if (this.page === 'kapi') return [
+      choices('kapiLanguage','Dialogue Language','Choose a language included with the installed Arcade Showdown mod.',
+        ['english','spanish','portuguese','russian'],titleCase),
       action('Exit',()=>this.back()),
     ];
     if (this.page === 'lag') return [number('offset','Offset (Global)','Positive values delay notes to match delayed audio.',-1500,1500,1), action('Reset Offset',() => this.change('offset',0)), action('Offset Calibration',() => this.beginLag('calibrate')), action('Auto Estimate',() => this.autoLag()), action('Test',() => this.beginLag('test'))];

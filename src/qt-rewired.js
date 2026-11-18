@@ -1,5 +1,5 @@
-import {beatAt,bpmAt,clamp,HIT_WINDOW} from './core.js?v=efcefb8518eb12';
-import {EXPANDED_BASE} from './expanded-content.js?v=efcefb8518eb12';
+import {beatAt,bpmAt,clamp,HIT_WINDOW} from './core.js?v=85a6fa2365627a';
+import {EXPANDED_BASE} from './expanded-content.js?v=85a6fa2365627a';
 
 export const isQtRewired=choice=>choice?.source==='qt-rewired';
 export function qtRequiredArt(choice,art){

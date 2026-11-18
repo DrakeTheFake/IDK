@@ -10,10 +10,15 @@ export class StoryIntros {
     this.base=base;this.ready=false;this.done=true;this.phase='inactive';this.images={};this.groups=new Map();this.sounds={};this.textPool=[];this.volume=0.7;this.cameraZoom=1;this.cameraFocus=null;this.hudAlpha=1;
   }
   async load(songId){
-    if(songId.startsWith('redux-dialogue-')){
+    if(/^(redux|kapi)-dialogue-/.test(songId)){
       await this.load('senpai');
-      if(!this.reduxLoading)this.reduxLoading=this.loadRedux().catch(error=>{this.reduxLoading=null;throw error;});
-      await this.reduxLoading;
+      const mod=songId.split('-')[0];
+      this.modDialogue??=new Map();
+      if(!this.modDialogue.has(mod))this.modDialogue.set(mod,this.loadModDialogue(mod).catch(error=>{
+        this.modDialogue.delete(mod);
+        throw error;
+      }));
+      await this.modDialogue.get(mod);
       return this;
     }
     if(this.ready){if(songId==='eggnog-erect-outro')await this.loadEggnog();if(songId.endsWith('-sky'))await this.loadSky();return this;}
@@ -29,9 +34,9 @@ export class StoryIntros {
     })();
     try{await this.loading;if(songId==='eggnog-erect-outro')await this.loadEggnog();if(songId.endsWith('-sky'))await this.loadSky();return this;}catch(error){this.loading=null;throw error;}
   }
-  async loadRedux(){
-    const base='assets/expanded/',response=await fetch(base+'redux-dialogue.json');
-    if(!response.ok)throw new Error('Heartbreak Havoc dialogue could not load.');
+  async loadModDialogue(mod){
+    const base='assets/expanded/',response=await fetch(base+mod+'-dialogue.json');
+    if(!response.ok)throw new Error('Mod dialogue could not load.');
     const pack=await response.json();
     await Promise.all(Object.entries(pack.images).map(async([key,file])=>{
       const image=new Image();
@@ -41,6 +46,9 @@ export class StoryIntros {
     }));
     for(const key of ['conversations','speakers','boxes','atlases'])Object.assign(this.pack[key],pack[key]);
     for(const [key,file] of Object.entries(pack.audio))this.sounds[key]=new Audio(base+file);
+    if(pack.font&&typeof FontFace!=='undefined'){
+      try{document.fonts.add(await new FontFace('KapiDialogue',`url(${base+pack.font})`).load());}catch{}
+    }
   }
   async loadSky(){
     if(this.skyLoaded)return;
@@ -60,7 +68,7 @@ export class StoryIntros {
   static shouldPlay(songId,{story=true,character='bf',variation='',retry=false,charting=false}={}){
     if(songId==='eggnog-erect-outro')return !charting;
     if(retry||charting)return false;
-    if(songId.startsWith('redux-dialogue-'))return story;
+    if(/^(redux|kapi)-dialogue-/.test(songId))return story;
     if(['senpai-sky','roses-sky','thorns-sky'].includes(songId))return true;
     if(songId==='winter-horrorland')return true;
     if(!['senpai','roses','thorns'].includes(songId))return false;
@@ -79,7 +87,7 @@ export class StoryIntros {
       if(!this.pack.eggnog)throw new Error('Call await storyIntros.load("eggnog-erect-outro") first.');
       this.phase='eggnog-outro';this.introDuration=16000;this.cameraStart=cameraStart;this.cameraStartZoom=cameraStartZoom;this.showSubtitles=subtitles;this.subtitleEntries=storyIntroSubtitles(this.pack.eggnog.subtitles);this.hideActors=['opponent'];this.hideProps=['santa'];this.skipArmedAt=null;this.skipTextAt=null;this.shotPlayed=false;this.effect('santa_emotion');return true;
     }
-    if(songId.startsWith('redux-dialogue-'))this.startDialogue(now);
+    if(/^(redux|kapi)-dialogue-/.test(songId))this.startDialogue(now);
     else if(songId.startsWith('roses')){this.effect('ANGRY_TEXT_BOX');this.startDialogue(now);}
     else if(songId==='winter-horrorland')this.introDuration=100+(this.pack.audio.Lights_Turn_On.durationMs||4643);
     else if(songId==='thorns')this.introDuration=reducedMotion?250:2100+(this.pack.audio.Senpai_Dies.durationMs||7333)+1600;
@@ -170,7 +178,12 @@ export class StoryIntros {
     if(this.phase==='dialogue'&&now>=this.typingAt){
       const text=this.currentText(now),count=text.length;
       if(count>this.typedChars&&now-this.lastBlip>32&&!this.forcedFull&&/\S/.test(text.at(-1)||'')){
+        if(this.songId.startsWith('kapi-dialogue-')){
+          this.effect('KAP_pixelText',.55);
+          this.lastBlip=now;
+        }else{
         const audio=this.textPool[(this.blipIndex=(this.blipIndex||0)+1)%this.textPool.length];if(audio){try{audio.pause();audio.currentTime=0;audio.volume=this.volume*0.6;audio.play().catch(()=>{});}catch{}}this.lastBlip=now;
+        }
       }
       this.typedChars=count;
       if(count===this.page.text.length&&this.completedAt===null){this.completedAt=now;this.boxAnimation='sentenceEnd';this.boxAt=now;}
@@ -222,7 +235,7 @@ export class StoryIntros {
     if(!outro&&this.completedAt!==null&&boxTime>=this.animationDuration(box,'sentenceEnd')){boxTime-=this.animationDuration(box,'sentenceEnd');boxAnimation='idle';}
     else if(!outro&&now>=this.typingAt&&this.completedAt===null){boxAnimation='speaking';boxTime=now-this.typingAt;}
     this.drawAnimation(ctx,box,boxAnimation,boxTime,640+(box.offsets?.[0]||0),360+(box.offsets?.[1]||0),box.scale||1);
-    if(!outro&&now>=this.typingAt){const style=box.text||{},text=this.currentText(now),size=style.size||32,x=640+(box.offsets?.[0]||0)+(style.offsets?.[0]||0),y=360+(box.offsets?.[1]||0)+(style.offsets?.[1]||0);ctx.font=`${size}px StoryPixel, monospace`;ctx.textBaseline='top';const lines=this.wrapText(ctx,text,style.width||800),shadow=storyIntroColor(style.shadowColor||'#00000000');for(const [i,line] of lines.entries()){if((style.shadowWidth??2)>0&&shadow.alpha){ctx.fillStyle=shadow.rgb;ctx.fillText(line,x+(style.shadowWidth??2),y+i*size*1.22+(style.shadowWidth??2));}ctx.fillStyle=storyIntroColor(style.color||'#000').rgb;ctx.fillText(line,x,y+i*size*1.22);}}
+    if(!outro&&now>=this.typingAt){const style=box.text||{},text=this.currentText(now),size=style.size||32,x=640+(box.offsets?.[0]||0)+(style.offsets?.[0]||0),y=360+(box.offsets?.[1]||0)+(style.offsets?.[1]||0);const font=this.songId.startsWith('kapi-dialogue-')?'KapiDialogue':'StoryPixel';ctx.font=`${size}px ${font}, monospace`;ctx.textBaseline='top';const lines=this.wrapText(ctx,text,style.width||800),shadow=storyIntroColor(style.shadowColor||'#00000000');for(const [i,line] of lines.entries()){if((style.shadowWidth??2)>0&&shadow.alpha){ctx.fillStyle=shadow.rgb;ctx.fillText(line,x+(style.shadowWidth??2),y+i*size*1.22+(style.shadowWidth??2));}ctx.fillStyle=storyIntroColor(style.color||'#000').rgb;ctx.fillText(line,x,y+i*size*1.22);}}
     ctx.font='18px monospace';ctx.fillStyle='#fff';ctx.strokeStyle='#000';ctx.lineWidth=4;const hint=outro?'':`${speaker?.name||entry.speaker}  ·  ENTER / TAP: CONTINUE     ESC: SKIP`;ctx.strokeText(hint,24,686);ctx.fillText(hint,24,686);ctx.restore();
     return[{id:'dialogue-advance',label:now<this.typingAt||this.currentText(now).length<this.page.text.length?'Complete dialogue text':'Next dialogue line',x:0,y:0,w:1280,h:720,action:'advance'},{id:'dialogue-skip',label:'Skip dialogue',x:1070,y:10,w:200,h:64,action:'skip'}];
   }

@@ -1,5 +1,12 @@
 export const PATCH_NOTES = [
   {
+    title:'VS. Kapi Arcade Showdown',
+    sections:[
+      ['Story Mode','Play both Kapi weeks, Flatzone, and Pyoro with the installed mod’s stage art and dialogue.'],
+      ['Freeplay','Play Fuzzy Distortion, Hairball (Pico Mix), Hairball Erect, Nyaw Erect, and the original tracks.'],
+    ],
+  },
+  {
     title:'Sky effects and presentation fixes',
     sections:[
       ['Sky Reborn','The moving anger signs and hearts are drawn from cached artwork. Stress Sky Mix centers Scenecore Sky and grounds the running Tankmen.'],
