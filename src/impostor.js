@@ -1,10 +1,12 @@
-import {clamp} from './core.js?v=d0aa7fd313ffa9';
-import {EXPANDED_BASE} from './expanded-content.js?v=d0aa7fd313ffa9';
+import {clamp} from './core.js?v=3071d0be2be15e';
+import {EXPANDED_BASE} from './expanded-content.js?v=3071d0be2be15e';
 
-export const isImpostorWeek=choice=>choice?.source==='impostor-week1';
+export const isImpostorWeek=choice=>/^impostor-week[12]$/.test(choice?.source||'');
 const introVideos={'sussus-moogus':'polus1',sabotage:'polus2',meltdown:'polus3'};
 
 export function impostorIntro(choice){
+  if(['sussus-toogus','lights-down','reactor'].includes(choice.baseSong))return {
+    ...(choice.baseSong==='sussus-toogus'?{file:'IMP2_toogus.mp4'}:{}),dialogue:'impostor-dialogue-'+choice.baseSong};
   const video=introVideos[choice.baseSong];
   if(!video||choice.variant==='pico')return null;
   return {file:`IMP_${video}.mp4`,dialogue:'impostor-dialogue-'+choice.baseSong};
@@ -13,19 +15,21 @@ export function impostorIntro(choice){
 export function createImpostorWeek(choice,chart){
   if(!isImpostorWeek(choice))return null;
   const state={beep:null,characters:{},noteFollow:0};
-  const cue=chart.events?.find(event=>event.e==='PlayVideo'&&event.v?.path==='meltdown');
+  const cue=chart.events?.find(event=>event.e==='PlayVideo'&&['meltdown','ejected'].includes(event.v?.path));
   if(cue){
     const element=document.createElement('video');
     element.muted=true;
     element.playsInline=true;
     element.preload='auto';
-    element.src=EXPANDED_BASE+'IMP_meltdown.mp4';
-    state.video={element,at:cue.t,end:chart.events.find(event=>event.e==='extra-events-cameraFadeEvent')?.t??cue.t+4000};
+    element.src=EXPANDED_BASE+(cue.v.path==='ejected'?'IMP2_ejected.mp4':'IMP_meltdown.mp4');
+    const end=cue.v.path==='ejected'?chart.events.find(event=>event.e==='extra-events-cameraFlashEvent')?.t:
+      chart.events.find(event=>event.e==='extra-events-cameraFadeEvent')?.t;
+    state.video={element,at:cue.t,end:end??cue.t+4000};
   }
   return state;
 }
 
-export function updateImpostorEvent(state,event){
+export function updateImpostorEvent(state,event,bpm=100){
   const value=event.v||{};
   if(event.e==='FocusCamera')state.noteFollow=value.noteFollow?Number(value.noteOffset)||20:0;
   if(event.e==='Reactor Beep')state.beep={at:event.t,alpha:clamp(Number(value.value??.4),0,.65),zoom:Number(value.zoomAmount??.015)};
@@ -33,7 +37,41 @@ export function updateImpostorEvent(state,event){
     state.characters.girlfriend=value.newchar;
     state.ghostAt=event.t;
   }
-  if(event.e==='extra-events-cameraFadeEvent')state.fadeAt=event.t;
+  if(event.e==='Toogus Sax')state.saxAt=event.t;
+  if(event.e==='LightsDownEvent'){
+    state.lights=value.type;
+    state.lightFlash={at:event.t,color:value.type==='in'?'white':'black',duration:value.type==='in'?500:600};
+  }
+  if(event.e==='HUDFadeEvent'){
+    const field=['hud','health','notes'][value.hud||0];
+    state.fades??={};
+    state.fades[field]={at:event.t,end:event.t+(value.duration||0)*15000/bpm,
+      from:impostorAlpha(state,field,event.t),to:value.shouldFadeIn?1:0};
+  }
+}
+
+export function impostorAlpha(state,field,time){
+  const fade=state?.fades?.[field];
+  if(!fade)return 1;
+  return fade.from+(fade.to-fade.from)*clamp((time-fade.at)/Math.max(1,fade.end-fade.at),0,1);
+}
+
+export function impostorProp(prop,state,time){
+  if(!prop)return null;
+  if(state?.lights==='in'&&['mirabg','mirafloor','miratable'].includes(prop.name))return null;
+  return prop;
+}
+
+export function impostorActorVisible(state,role){
+  return !(state?.lights==='in'&&role==='girlfriend'||state?.lights==='final'&&role!=='opponent');
+}
+
+export function impostorGroundPosition(choice,role,position,config,groundY,actorScale=1){
+  if(!isImpostorWeek(choice)||['ejected','monotoneejected'].includes(choice.stage)||role==='girlfriend')return position;
+  // Converted Sparrow sheets contain transparent padding below their declared
+  // idle hitbox. Keep one idle baseline so singing poses retain their offsets.
+  const correction=(config?.groundOffset||0)*(config?.metadata?.scale||1)*actorScale;
+  return [position[0],(role==='opponent'?groundY:position[1])-correction];
 }
 
 export function impostorCameraPush(state,time){

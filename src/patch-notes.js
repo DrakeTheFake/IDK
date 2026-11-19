@@ -1,5 +1,14 @@
 export const PATCH_NOTES = [
   {
+    title:'Bad Bunny, MIRA Mania and engine extension imports',
+    sections:[
+      ['FNF feat. Bad Bunny','Celoso!, Palmas and Amarre include original charts, audio, source-resolution characters, the beach stage, dolphin cameos and camera rhythms.'],
+      ['VS. Impostor Week 2','Sussus Toogus, Lights Down, Reactor and Ejected join Story Mode and Freeplay. Ejected also has Erect and Nightmare charts.'],
+      ['Extra Events','Import the Extra Events ZIP to keep its demos in your library. Its ten event types work in imported charts and are available in the chart editor.'],
+      ['Duplicate Variations Handler','Import its ZIP, then choose between overlapping song versions in Freeplay using the album selector. Disable it in Mods to show separate song rows again.'],
+    ],
+  },
+  {
     title:'VS. Impostor Week 1',
     sections:[
       ['Polus Problems','Play Sussus Moogus, Sabotage, and Meltdown with their original Polus stages and Story Mode cutscenes.'],

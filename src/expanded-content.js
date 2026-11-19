@@ -13,6 +13,8 @@ export const EXPANDED_WEEKS = [
   {id:'DpzKapikapiWeekGNW',name:'PLEASE NERF UP-B...',songs:['dpz_flatzone'],character:'bf'},
   {id:'DpzKapiKapiWeekPyoro',name:'NYO NYO',songs:['dpz_pyoro'],character:'bf'},
   {id:'ImpostorWeek1',name:'POLUS PROBLEMS',songs:['sussus-moogus','sabotage','meltdown'],color:'#BB2D30',character:'bf'},
+  {id:'ImpostorWeek2',name:'MIRA MANIA',songs:['sussus-toogus','lights-down','reactor','ejected'],color:'#1F6B2B',character:'bf'},
+  {id:'ftbb',name:'FEAT. BAD BUNNY',songs:['celoso','palmas','amarre'],color:'#9C2E26',character:'bf'},
 ];
 
 export function playerIdentity(id='') {

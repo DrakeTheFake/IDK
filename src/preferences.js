@@ -1,4 +1,4 @@
-import {CALIBRATION_BEAT as BEAT,CalibrationAudio,medianDelay} from './audio-timing.js?v=d0aa7fd313ffa9';
+import {CALIBRATION_BEAT as BEAT,CalibrationAudio,medianDelay} from './audio-timing.js?v=3071d0be2be15e';
 const MEDIA = 'assets/preferences/';
 const WIDTH = 1280;
 const HEIGHT = 720;
@@ -32,7 +32,7 @@ const GAMEPAD = {
   ...Object.fromEntries([4, 14, 13, 0, 1, 5].map((button, lane) => [SIX_NOTES[lane], [button]])),
 };
 
-import {SECRET_CHANCES} from './sky-effects.js?v=d0aa7fd313ffa9';
+import {SECRET_CHANCES} from './sky-effects.js?v=3071d0be2be15e';
 
 export const PREFERENCE_DEFAULTS = Object.freeze({
   naughtyness: true, strumlineBackground: 0, flashingLights: true, cameraZooms: true,
@@ -44,6 +44,7 @@ export const PREFERENCE_DEFAULTS = Object.freeze({
   songRate:1, healthDrain:0, healthDrainLethality:'safe', missDamage:1, instantFail:false, mirrorNotes:false, noFail:false,
   qtLanguage: 'english', qtSawbladeMode: 'default', qtPlushieButton: true,
   kapiLanguage:'english',
+  extraRotate:true,extraRotateHUD:true,extraShake:true,extraLyrics:true,extraVignette:true,extraCountdown:true,
   vampKey:'Space', vampLanguage:'english',
 });
 
@@ -221,7 +222,7 @@ const REWIRED = [
 ];
 
 const ROOT_PAGES = [['preferences', 'Preferences'], ['controls', 'Controls'], ['rewired', 'Rewired Options'],
-  ['lag', 'Lag Adjustment'], ['save', 'Save Data Options'], ['sky', 'Sky Reborn'], ['vamp','VS. Vamp'], ['kapi','Arcade Showdown']];
+  ['lag', 'Lag Adjustment'], ['save', 'Save Data Options'], ['sky', 'Sky Reborn'], ['vamp','VS. Vamp'], ['kapi','Arcade Showdown'],['extra-events','Extra Events']];
 
 const BUTTON_LABELS = ['A','B','X','Y','LB','RB','LT','RT','Select','Start','L3','R3','D-Pad Up','D-Pad Down','D-Pad Left','D-Pad Right','Home'];
 const STICK_LABELS = ['Left','Down','Up','Right'];
@@ -405,6 +406,14 @@ export class PreferencesMenu {
       choices('kapiLanguage','Dialogue Language','Choose a language included with the installed Arcade Showdown mod.',
         ['english','spanish','portuguese','russian'],titleCase),
       action('Exit',()=>this.back()),
+    ];
+    if(this.page==='extra-events')return [
+      flag('extraRotate','Rotate Screen Effects','Play charted camera rotations.'),
+      flag('extraRotateHUD','Rotate HUD Effects','Allow the HUD to rotate with camera rotation events.'),
+      flag('extraShake','Shake Screen Effects','Play charted screen and HUD shake effects.'),
+      flag('extraLyrics','Show Lyrics','Display both lyric lines from imported charts.'),
+      flag('extraVignette','Vignette Effects','Display charted vignette effects.'),
+      flag('extraCountdown','Mid-Song Countdown','Play countdown graphics and sounds during songs.'),
     ];
     if (this.page === 'lag') return [number('offset','Offset (Global)','Positive values delay notes to match delayed audio.',-1500,1500,1), action('Reset Offset',() => this.change('offset',0)), action('Offset Calibration',() => this.beginLag('calibrate')), action('Auto Estimate',() => this.autoLag()), action('Test',() => this.beginLag('test'))];
     if (this.page === 'save') return [

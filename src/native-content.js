@@ -1,15 +1,16 @@
-import {bpmAt} from './core.js?v=d0aa7fd313ffa9';
-import {nativeFacing} from './rhythm.js?v=d0aa7fd313ffa9';
-import {officialRequiredAssets} from './official-polish.js?v=d0aa7fd313ffa9';
-import {naughtyAnimation} from './preferences.js?v=d0aa7fd313ffa9';
-import {drawSkyAnimation} from './sky-polish.js?v=d0aa7fd313ffa9';
-import {loadExpandedAnimation} from './sky-ui.js?v=d0aa7fd313ffa9';
+import {BunnyShaders,isBadBunny} from './bad-bunny.js?v=3071d0be2be15e';
+import {bpmAt} from './core.js?v=3071d0be2be15e';
+import {nativeFacing} from './rhythm.js?v=3071d0be2be15e';
+import {officialRequiredAssets} from './official-polish.js?v=3071d0be2be15e';
+import {naughtyAnimation} from './preferences.js?v=3071d0be2be15e';
+import {drawSkyAnimation} from './sky-polish.js?v=3071d0be2be15e';
+import {loadExpandedAnimation} from './sky-ui.js?v=3071d0be2be15e';
 
 const PICO_BASE_LABELS={idle:'Idle',singLEFT:'Left',singDOWN:'Down',singUP:'Up',singRIGHT:'Right'};
 const PICO_ACTION_LABELS={intro1:'Pissed Off',intro2:'Shoot and Return',cock:'Gun Reload',shoot:'Shoot',
   shootMISS:'Hit',hey:'Hey',cheer:'Cheer',singLEFTmiss:'Left Miss',singDOWNmiss:'Down Miss',singUPmiss:'Up Miss',singRIGHTmiss:'Right Miss'};
 export class NativeContent {
- constructor(assets,audio){this.assets=assets;this.audio=audio;this.data={stages:{},characters:{},reuse:{}};this.tintCache=new Map();}
+ constructor(assets,audio){this.assets=assets;this.audio=audio;this.data={stages:{},characters:{},reuse:{}};this.tintCache=new Map();this.bunnyShaders=new BunnyShaders();}
  async load(){
    const response=await fetch('native-content.json',{cache:'no-cache'});
    if(!response.ok)throw new Error('The stage and character index could not be loaded.');
@@ -74,6 +75,26 @@ export class NativeContent {
  if(prop.filter)ctx.filter=prop.filter;
  const blend=String(prop.blendMode||'').toLowerCase();
  if(blend==='add')ctx.globalCompositeOperation='lighter';else if(['multiply','overlay','screen','darken','lighten','difference','hue','color'].includes(blend))ctx.globalCompositeOperation=blend;
+ if(isBadBunny(game.choice)&&this.bunnyShaders.draw(ctx,prop,img,{x,y,
+   width:(this.data.stageAssets[prop.assetId]?.logicalSize?.[0]||img.width)*worldScale*scale[0],
+   height:(this.data.stageAssets[prop.assetId]?.logicalSize?.[1]||img.height)*worldScale*scale[1],
+   time:reducedMotion?0:time,source:this.data.bunny.shaders[prop.name]})){
+   ctx.restore();return;
+ }
+ if(prop.tileY&&img){
+   const anim=prop.animations?.[0],frame=anim&&assets.frame(prop.assetId,anim.prefix);
+   const logical=frame?[frame.frameWidth||frame.width,frame.frameHeight||frame.height]:this.data.stageAssets[prop.assetId]?.logicalSize||[img.width,img.height];
+   const w=logical[0]*worldScale*scale[0],h=logical[1]*worldScale*scale[1];
+   if(h>0){
+     const offset=((y+(reducedMotion?0:Math.max(0,time))*(prop.velocityY||0)/1000*worldScale)%h+h)%h;
+     const transform=ctx.getTransform(),top=(0-transform.f)/transform.d,bottom=(ctx.canvas.height-transform.f)/transform.d;
+     for(let yy=offset+Math.floor((top-offset)/h)*h-h;yy<bottom+h;yy+=h){
+       if(frame)assets.draw(ctx,prop.assetId,frame,x,yy,worldScale*scale[0]);
+       else assets.image(ctx,prop.assetId,x,yy,w,h);
+     }
+   }
+   ctx.restore();return;
+ }
  if(prop.tileX&&img){
    const logical=this.data.ui?.[prop.assetId]?.logicalSize||[img.width,img.height];
    const w=logical[0]*worldScale*scale[0],h=logical[1]*worldScale*scale[1],gap=Math.max(w*.35,w+(prop.tileGap||0)*worldScale);

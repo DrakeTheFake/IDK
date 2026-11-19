@@ -1,5 +1,5 @@
-import {audioClockTime,songClockTime} from './audio-timing.js?v=d0aa7fd313ffa9';
-import {STICKER_SOUNDS} from './transitions.js?v=d0aa7fd313ffa9';
+import {audioClockTime,songClockTime} from './audio-timing.js?v=3071d0be2be15e';
+import {STICKER_SOUNDS} from './transitions.js?v=3071d0be2be15e';
 
 export class AudioEngine {
   constructor(settings){this.settings=settings;this.cache=new Map();this.effects=new Map();this.sources=[];this.menu=null;this.menuFile='';this.position=0;this.running=false;this.ctx=null;this.buffers=null;this.trackOffsets=[];this.trackRoles=[];this.musicURLs=new Set();this.allowVoices=true;this.songRate=1;this.stemGains=[];}
@@ -82,7 +82,7 @@ export class AudioEngine {
   start(position=0){
     this.stopSources();this.stopPreview();this.stopMenu();this.position=position;this.clockStart=this.ctx.currentTime;this.running=true;this.music.gain.value=1;this.voices.gain.cancelScheduledValues(this.ctx.currentTime);this.voices.gain.value=this.allowVoices?1:0;
     this.stemGains=[];
-    this.sources=this.buffers.map((buffer,i)=>{const s=this.ctx.createBufferSource();s.buffer=buffer;s.playbackRate.value=this.songRate;const level=this.ctx.createGain();level.gain.value=this.mutedRoles?.has(this.trackRoles[i])?0:1;s.connect(level);level.connect(i===0||this.trackRoles[i]==='opponent'&&this.allowVoices?this.music:this.voices);this.stemGains.push(level);const trackOffset=(this.trackOffsets[i]||0)/1000,relative=position/1000-trackOffset,delay=Math.max(0,-relative),offset=Math.max(0,relative);if(offset<buffer.duration)s.start(this.ctx.currentTime+delay/this.songRate,offset);return s;});
+    this.sources=this.buffers.map((buffer,i)=>{const s=this.ctx.createBufferSource();s.buffer=buffer;s.playbackRate.value=this.songRate;const level=this.ctx.createGain();level.gain.value=this.mutedRoles?.has(this.trackRoles[i])?0:(this.eventVolumes?.[this.trackRoles[i]||(i===0?'instrumental':'player')]??1);s.connect(level);level.connect(i===0||this.trackRoles[i]==='opponent'&&this.allowVoices?this.music:this.voices);this.stemGains.push(level);const trackOffset=(this.trackOffsets[i]||0)/1000,relative=position/1000-trackOffset,delay=Math.max(0,-relative),offset=Math.max(0,relative);if(offset<buffer.duration)s.start(this.ctx.currentTime+delay/this.songRate,offset);return s;});
   }
   time(eventAt){
     return this.running?this.position+(audioClockTime(this.ctx,eventAt)-this.clockStart)*1000*this.songRate:this.position;
@@ -98,6 +98,14 @@ export class AudioEngine {
     if(muted)this.mutedRoles.add(role);else this.mutedRoles.delete(role);
     for(const [i,level] of this.stemGains.entries()){
       if(this.trackRoles[i]===role)level.gain.setTargetAtTime(muted?0:1,this.ctx.currentTime,.015);
+    }
+  }
+  setEventVolumes(volumes={}){
+    this.eventVolumes=volumes;
+    for(const [index,gain] of this.stemGains.entries()){
+      const role=this.trackRoles[index]||(index===0?'instrumental':'player');
+      const volume=this.mutedRoles?.has(role)?0:volumes?.[role]??1;
+      if(gain.gain.value!==volume)gain.gain.setTargetAtTime(volume,this.ctx.currentTime,.01);
     }
   }
   muteVoices(muted){if(this.voices)this.voices.gain.setTargetAtTime(muted||!this.allowVoices?0:1,this.ctx.currentTime,0.015);}
