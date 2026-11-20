@@ -1,4 +1,4 @@
-import {pixelStage} from './story-flow.js?v=eb47cb3d299c14';
+import {pixelStage} from './story-flow.js?v=61949b02c3550a';
 
 const PIXEL_DIRECTIONS=['left','down','up','right'];
 export class PixelUI {

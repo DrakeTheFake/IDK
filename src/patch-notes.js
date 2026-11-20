@@ -1,5 +1,14 @@
 export const PATCH_NOTES = [
   {
+    title:'VS. Impostor: Deadly Delusion and the bonus weeks',
+    sections:[
+      ['Weeks 6 and 7','Deadly Delusion and Humane Heartbeat include their original songs, characters, Grey and Pink stages, dialogue, videos and heart effects.'],
+      ['Weeks J, Boo and T',"Jorsawsee's Jams, Loggo's Halloween and Rousey Rival add their original campaigns, pixel artwork, stage switches, additional singers and Turbulence scenery."],
+      ['The Airship remote','Click or tap the little teleporter remote in the Airship room to permanently unlock the Henry campaign in Story Mode and Freeplay.'],
+      ['Henry','Battling the Boyfriend includes Titular, Greatest Plan, Reinforcements and Armed, with the original branching intro choices, duet sections and ending video.'],
+    ],
+  },
+  {
     title:'VS. Impostor: Airship, Defeat and Magmatic',
     sections:[
       ['Airship Atrocities','Mando, Dlow, Oversight, Danger and Double Kill include their available Pico mixes, original stages, dialogue and video intros.'],

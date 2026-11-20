@@ -1,5 +1,5 @@
-import {clamp} from './core.js?v=eb47cb3d299c14';
-import {eventEase} from './song-events.js?v=eb47cb3d299c14';
+import {clamp} from './core.js?v=61949b02c3550a';
+import {eventEase} from './song-events.js?v=61949b02c3550a';
 
 export const isSkyRedux=choice=>choice?.source==='sky-redux';
 

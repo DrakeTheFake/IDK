@@ -1,5 +1,5 @@
-import {EVENT_SCHEMAS as BASE_EVENT_SCHEMAS} from './song-events.js?v=eb47cb3d299c14';
-import {EXTRA_EVENT_SCHEMAS} from './extra-events.js?v=eb47cb3d299c14';
+import {EVENT_SCHEMAS as BASE_EVENT_SCHEMAS} from './song-events.js?v=61949b02c3550a';
+import {EXTRA_EVENT_SCHEMAS} from './extra-events.js?v=61949b02c3550a';
 const EVENT_SCHEMAS={...BASE_EVENT_SCHEMAS,...EXTRA_EVENT_SCHEMAS};
 const NE_ESCAPE=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function installNativeEditor(Editor,{loadRaw,onDifficulty,characterChoices,stageChoices}){

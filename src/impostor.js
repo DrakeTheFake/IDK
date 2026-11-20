@@ -1,7 +1,7 @@
-import {clamp} from './core.js?v=eb47cb3d299c14';
-import {EXPANDED_BASE} from './expanded-content.js?v=eb47cb3d299c14';
+import {clamp} from './core.js?v=61949b02c3550a';
+import {EXPANDED_BASE} from './expanded-content.js?v=61949b02c3550a';
 
-export const isImpostorWeek=choice=>/^impostor-week[1-5]$/.test(choice?.source||'');
+export const isImpostorWeek=choice=>/^impostor-week[1-9AB]$/.test(choice?.source||'');
 const introVideos={'sussus-moogus':'polus1',sabotage:'polus2',meltdown:'polus3'};
 const lightAnimations={on:{idle:'idle','idle-alt':'idle'},off:{idle:'idle-alt','idle-alt':'idle-alt'}};
 for(const direction of ['LEFT','DOWN','UP','RIGHT'])for(const miss of ['','miss']){
@@ -20,6 +20,10 @@ export function impostorLightAnimations(state,role){
 }
 
 export function impostorIntro(choice){
+  if(choice.baseSong==='titular')return {henry:true};
+  const nextVideos={delusion:'grey',pretender:'pinkwave','voting-time':'voting-time',turbulence:'turbulence',armed:'armed'};
+  if(nextVideos[choice.baseSong])return {file:'IMP6_'+nextVideos[choice.baseSong]+'.mp4',...(choice.baseSong==='delusion'?{dialogue:'impostor-dialogue-delusion'}:{})};
+  if(['heartbeat','pinkwave'].includes(choice.baseSong))return {dialogue:'impostor-dialogue-'+choice.baseSong};
   if(['mando','oversight','danger','boiling-point'].includes(choice.baseSong))return {
     file:'IMP3_'+(choice.baseSong==='boiling-point'?'boiling':choice.baseSong)+'.mp4',
     ...(['mando','oversight'].includes(choice.baseSong)?{dialogue:'impostor-dialogue-'+choice.baseSong}:{}),
@@ -87,7 +91,7 @@ export function impostorActorVisible(state,role){
 }
 
 export function impostorGroundPosition(choice,role,position,config,groundY,actorScale=1){
-  if(!isImpostorWeek(choice)||['ejected','monotoneejected','airship','airshiperect'].includes(choice.stage)||role==='girlfriend')return position;
+  if(!isImpostorWeek(choice)||['ejected','monotoneejected','airship','airshiperect','turbulence','charles','pretender'].includes(choice.stage)||role==='girlfriend')return position;
   // Converted Sparrow sheets contain transparent padding below their declared
   // idle hitbox. Keep one idle baseline so singing poses retain their offsets.
   const correction=(config?.groundOffset||0)*(config?.metadata?.scale||1)*actorScale;

@@ -1,4 +1,4 @@
-import {clamp} from './core.js?v=eb47cb3d299c14';
+import {clamp} from './core.js?v=61949b02c3550a';
 
 export const isKapi=choice=>choice?.source==='arcade-showdown';
 export const KAPI_LANGUAGES={english:'',spanish:'-es',portuguese:'-pt',russian:'-ru'};

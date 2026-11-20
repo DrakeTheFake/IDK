@@ -17,6 +17,12 @@ export const EXPANDED_WEEKS = [
   {id:'ImpostorWeek3',name:'AIRSHIP ATROCITIES',songs:['mando','dlow','oversight','danger','double-kill'],color:'#F0B946',character:'bf'},
   {id:'ImpostorWeek4',name:'DEFEAT',songs:['defeat'],color:'#4B0082',character:'bf'},
   {id:'ImpostorWeek5',name:'MAGMATIC MONSTROSITY',songs:['ashes','magmatic','boiling-point'],color:'#7B2C2C',character:'bf'},
+  {id:'ImpostorWeek6',name:'DEADLY DELUSION',songs:['delusion','blackout','neurotic'],color:'#808080',character:'bf'},
+  {id:'ImpostorWeek7',name:'HUMANE HEARTBEAT',songs:['heartbeat','pinkwave','pretender'],color:'#FF69B4',character:'bf'},
+  {id:'ImpostorWeek8',name:"JORSAWSEE'S JAMS",songs:['o2','voting-time','turbulence','victory'],color:'#3B82F6',character:'bf'},
+  {id:'ImpostorWeekB',name:"LOGGO'S HALLOWEEN",songs:['christmas','spookpostor'],color:'#22C55E',character:'bf'},
+  {id:'ImpostorWeekA',name:'ROUSEY RIVAL',songs:['sussy-bussy','rivals','chewmate'],color:'#FF7F50',character:'bf'},
+  {id:'ImpostorWeek9',name:'BATTLING THE BOYFRIEND',songs:['titular','greatest-plan','reinforcements','armed'],color:'#F9CF51',character:'bf'},
   {id:'ftbb',name:'FEAT. BAD BUNNY',songs:['celoso','palmas','amarre'],color:'#9C2E26',character:'bf'},
 ];
 

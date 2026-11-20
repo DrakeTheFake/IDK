@@ -87,3 +87,5 @@ dialogue, videos, charts and source-resolution artwork. Defeat's combo-break
 selection and the scripted stage/character changes are reimplemented for the
 browser. Oversized audio stems are stored as sample-identical float32 PCM
 parts and joined before playback; no source samples are removed or reduced.
+
+VS. Impostor additional campaigns: Deadly Delusion, Humane Heartbeat, Jorsawsee's Jams, Battling the Boyfriend, Rousey Rival and Loggo's Halloween use the original installed VS. Impostor V-Slice port assets and authored charts. Artwork, music, animation and character credits remain with the VS. Impostor creators and V-Slice port contributors. The browser adaptation includes the Airship remote unlock and original Henry choice videos.

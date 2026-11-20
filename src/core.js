@@ -41,8 +41,9 @@ export function parseChart(data){
     start+=steps*60000/bpm/4;beats+=steps/4;
   }
   notes.sort((a,b)=>a.time-b.time||a.lane-b.lane||Number(a.player)-Number(b.player));
-  // Editors sometimes emitted identical notes at a section boundary.
-  const unique=notes.filter((n,i)=>!notes.slice(Math.max(0,i-8),i).some(p=>p.player===n.player&&p.lane===n.lane&&Math.abs(p.time-n.time)<1));
+  // Remove identical editor boundary notes, while retaining simultaneous notes
+  // assigned to different singers or animations.
+  const unique=notes.filter((n,i)=>!notes.slice(Math.max(0,i-8),i).some(p=>p.player===n.player&&p.lane===n.lane&&p.kind===n.kind&&p.length===n.length&&JSON.stringify(p.params)===JSON.stringify(n.params)&&Math.abs(p.time-n.time)<1));
   let chartEnd=start;for(const n of unique)chartEnd=Math.max(chartEnd,n.time+n.length);
   return {notes:unique,laneCount,sections,tempos,bpm:Number(song.bpm)||100,speed:Number(song.speed)||1,name:song.song,chartEnd,events:Array.isArray(song.events)?song.events:[]};
 }
@@ -67,7 +68,7 @@ export function nearestNote(notes,lane,time){
   let best=null,distance=Infinity;
   for(let i=left;i<notes.length&&notes[i].time<=time+HIT_WINDOW;i++){
     const note=notes[i];
-    if(!note.player||note.hit||note.missed||note.lane!==lane)continue;
+    if(!note.player||note.autoSinger||note.hit||note.missed||note.lane!==lane)continue;
     const delta=Math.abs(note.time-time);
     if(delta<distance){best=note;distance=delta;}
   }
