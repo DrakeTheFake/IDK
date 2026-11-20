@@ -1,10 +1,10 @@
-import {BunnyShaders,isBadBunny} from './bad-bunny.js?v=3071d0be2be15e';
-import {bpmAt} from './core.js?v=3071d0be2be15e';
-import {nativeFacing} from './rhythm.js?v=3071d0be2be15e';
-import {officialRequiredAssets} from './official-polish.js?v=3071d0be2be15e';
-import {naughtyAnimation} from './preferences.js?v=3071d0be2be15e';
-import {drawSkyAnimation} from './sky-polish.js?v=3071d0be2be15e';
-import {loadExpandedAnimation} from './sky-ui.js?v=3071d0be2be15e';
+import {BunnyShaders,isBadBunny} from './bad-bunny.js?v=297a9eda739823';
+import {bpmAt} from './core.js?v=297a9eda739823';
+import {nativeFacing} from './rhythm.js?v=297a9eda739823';
+import {officialRequiredAssets} from './official-polish.js?v=297a9eda739823';
+import {naughtyAnimation} from './preferences.js?v=297a9eda739823';
+import {drawSkyAnimation} from './sky-polish.js?v=297a9eda739823';
+import {loadExpandedAnimation} from './sky-ui.js?v=297a9eda739823';
 
 const PICO_BASE_LABELS={idle:'Idle',singLEFT:'Left',singDOWN:'Down',singUP:'Up',singRIGHT:'Right'};
 const PICO_ACTION_LABELS={intro1:'Pissed Off',intro2:'Shoot and Return',cock:'Gun Reload',shoot:'Shoot',
@@ -36,6 +36,7 @@ export class NativeContent {
    }))).then(art=>this.picoArt=art).catch(()=>{this.picoLoading=null;});
    await this.picoLoading;
  }
+ prepareEffects(choice){if(isBadBunny(choice))this.bunnyShaders.prepare(this.stage(choice),this.assets,this.data.bunny.shaders);}
  stage(choice){return this.data.stages[choice.stage];}
  animationDuration(id,name,player=false){
    const config=this.character(id,player),alias=config?.animationMap?.[name];
@@ -45,7 +46,7 @@ export class NativeContent {
  }
  character(id,player=false){const mapped=this.data.characterIds?.[id];if(mapped&&this.data.characters[mapped])return this.data.characters[mapped];const name=id==='bf-car'?'BF_CAR':id==='mom-car'||id==='mom'?'MOM_CAR':id==='gf-car'?'GF_CAR':id==='gf'||id==='gf-extended'?'GF_EXTENDED':id==='nene'?'NENE_EXTENDED':id==='pico'&&!player?'PICO_OPPONENT':null;return name?this.data.characters[name]:null;}
  required(choice){const stage=this.stage(choice),names=new Set(officialRequiredAssets(choice));if(stage)for(const prop of stage.props)if(prop.assetId)names.add(prop.assetId);const chars=choice.characters||{player:choice.character==='pico'?'pico-playable':'bf',girlfriend:choice.character==='pico'?'nene':'gf',opponent:choice.opponent||'dad'};for(const role of ['player','opponent','girlfriend']){const config=this.character(chars[role],role==='player');if(config){names.add(config.atlasName);for(const clip of Object.values(config.eyes||{}))names.add(clip.name);}const icon=this.data.iconAssets?.[chars[role]];if(icon)names.add(icon);}if(choice.character==='pico')names.add('NENE_EXTENDED');if(choice.opponent==='gf')names.add('GF_EXTENDED');if(chars.girlfriend==='nene-pixel')for(const layer of this.data.pixelABot?.layers||[])names.add(layer.assetId);return [...names];}
- drawCharacter(ctx,id,actor,{x,y,scale=0.65,time=0,beat=0,bpm=100,period=1,player=false,animation=null,animationTime=null,suffix=null,globalOffsets=true,naughtyness=true}={}){const config=this.character(id,player);if(!config)return false;const aliases=config.animationMap||{},idle=suffix?.dance||!actor||actor.direction==='idle'||time>actor.until,forced=actor?.forced&&time<actor.forced.until?actor.forced:null,dance=(suffix?.idle?aliases['danceLeft'+suffix.idle]||!aliases['idle'+suffix.idle]&&aliases.danceLeft:aliases.danceLeft)?period===0?'danceLeft':(Math.floor(Math.max(0,beat)/Math.max(period,0.000001))%2?'danceRight':'danceLeft'):'idle',base=idle?dance:'sing'+actor.direction,variant=idle?suffix?.idle:suffix?.sing,requested=naughtyAnimation(id,animation||forced?.name||(variant&&aliases[base+variant]?base+variant:base),naughtyness,aliases),alias=aliases[requested]||aliases[requested.replace(/miss|-alt|-sad|-censor/g,'')]||aliases[dance]||aliases.idle||Object.values(aliases)[0];if(!alias)return false;
+ drawCharacter(ctx,id,actor,{x,y,scale=0.65,time=0,beat=0,bpm=100,period=1,player=false,animation=null,animationTime=null,suffix=null,animationRemap=null,globalOffsets=true,naughtyness=true}={}){const config=this.character(id,player);if(!config)return false;const aliases=config.animationMap||{},idle=suffix?.dance||!actor||actor.direction==='idle'||time>actor.until,forced=actor?.forced&&time<actor.forced.until?actor.forced:null,dance=(suffix?.idle?aliases['danceLeft'+suffix.idle]||!aliases['idle'+suffix.idle]&&aliases.danceLeft:aliases.danceLeft)?period===0?'danceLeft':(Math.floor(Math.max(0,beat)/Math.max(period,0.000001))%2?'danceRight':'danceLeft'):'idle',base=idle?dance:'sing'+actor.direction,variant=idle?suffix?.idle:suffix?.sing,semantic=naughtyAnimation(id,animation||forced?.name||(variant&&aliases[base+variant]?base+variant:base),naughtyness,aliases),requested=animationRemap?.[semantic]||semantic,alias=aliases[requested]||aliases[requested.replace(/miss|-alt|-sad|-censor/g,'')]||aliases[dance]||aliases.idle||Object.values(aliases)[0];if(!alias)return false;
  const frames=this.assets.frames(config.atlasName,alias.normalPrefix||alias.prefix);if(!frames.length)return false;const fps=alias.fps||24,indices=alias.frameIndices,length=indices?.length||frames.length,phase=animationTime??(forced?(time-forced.since)*(forced.speed??1):idle?(period===0?0:((beat%period+period)%period)*60000/bpm):time-actor.since),offset=Math.floor(Math.max(0,phase)*fps/1000),cursor=alias.looped?offset%length:Math.min(length-1,offset),index=indices?.[cursor]??cursor,size=config.logicalIdleSize||config.logicalSize||[500,500],s=scale*(config.metadata?.scale||1),global=globalOffsets&&config.globalOffsets||[0,0];
  const picoLabel=PICO_BASE_LABELS[requested]||PICO_ACTION_LABELS[requested];
  if(id==='pico-playable'&&this.picoArt&&picoLabel){
@@ -79,6 +80,12 @@ export class NativeContent {
    width:(this.data.stageAssets[prop.assetId]?.logicalSize?.[0]||img.width)*worldScale*scale[0],
    height:(this.data.stageAssets[prop.assetId]?.logicalSize?.[1]||img.height)*worldScale*scale[1],
    time:reducedMotion?0:time,source:this.data.bunny.shaders[prop.name]})){
+   ctx.restore();return;
+ }
+ if(isBadBunny(game.choice)&&this.bunnyShaders.drawProp(ctx,prop,game,assets,{x,y,
+   width:(this.data.stageAssets[prop.assetId]?.logicalSize?.[0]||img.width)*worldScale*scale[0],
+   height:(this.data.stageAssets[prop.assetId]?.logicalSize?.[1]||img.height)*worldScale*scale[1],
+   scale:worldScale*scale[0],time})){
    ctx.restore();return;
  }
  if(prop.tileY&&img){

@@ -1,5 +1,13 @@
 export const PATCH_NOTES = [
   {
+    title:'Lights Down and full-resolution rendering improvements',
+    sections:[
+      ['Lights Down','Boyfriend and Green use their bright singing poses with the lights on and their dark poses only during the blackout.'],
+      ['Bad Bunny','The beach effects share one stable GPU surface. Camera bops no longer resize three large shader buffers every frame.'],
+      ['Original artwork','Large native sprite sheets use smaller lossless texture pages. Sprite pixels, animation frames and stage effects keep their original resolution.'],
+    ],
+  },
+  {
     title:'Bad Bunny, MIRA Mania and engine extension imports',
     sections:[
       ['FNF feat. Bad Bunny','Celoso!, Palmas and Amarre include original charts, audio, source-resolution characters, the beach stage, dolphin cameos and camera rhythms.'],

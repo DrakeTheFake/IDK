@@ -1,8 +1,23 @@
-import {clamp} from './core.js?v=3071d0be2be15e';
-import {EXPANDED_BASE} from './expanded-content.js?v=3071d0be2be15e';
+import {clamp} from './core.js?v=297a9eda739823';
+import {EXPANDED_BASE} from './expanded-content.js?v=297a9eda739823';
 
 export const isImpostorWeek=choice=>/^impostor-week[12]$/.test(choice?.source||'');
 const introVideos={'sussus-moogus':'polus1',sabotage:'polus2',meltdown:'polus3'};
+const lightAnimations={on:{idle:'idle','idle-alt':'idle'},off:{idle:'idle-alt','idle-alt':'idle-alt'}};
+for(const direction of ['LEFT','DOWN','UP','RIGHT'])for(const miss of ['','miss']){
+  const name='sing'+direction+miss;
+  for(const input of [name,name+'-alt']){
+    lightAnimations.on[input]=name+'-alt';
+    lightAnimations.off[input]=name;
+  }
+}
+
+export function impostorLightAnimations(state,role){
+  if(!state?.lights||!['player','opponent'].includes(role))return null;
+  // The installed Lights Down character files reverse the singing aliases:
+  // sing*-alt contains lit art, while sing* contains the dark outline art.
+  return lightAnimations[state.lights==='in'?'off':'on'];
+}
 
 export function impostorIntro(choice){
   if(['sussus-toogus','lights-down','reactor'].includes(choice.baseSong))return {

@@ -1,5 +1,5 @@
-import {audioClockTime,songClockTime} from './audio-timing.js?v=3071d0be2be15e';
-import {STICKER_SOUNDS} from './transitions.js?v=3071d0be2be15e';
+import {audioClockTime,songClockTime} from './audio-timing.js?v=297a9eda739823';
+import {STICKER_SOUNDS} from './transitions.js?v=297a9eda739823';
 
 export class AudioEngine {
   constructor(settings){this.settings=settings;this.cache=new Map();this.effects=new Map();this.sources=[];this.menu=null;this.menuFile='';this.position=0;this.running=false;this.ctx=null;this.buffers=null;this.trackOffsets=[];this.trackRoles=[];this.musicURLs=new Set();this.allowVoices=true;this.songRate=1;this.stemGains=[];}

@@ -1,7 +1,7 @@
-import {drawSprite,withSpriteFilter} from './sprite-rendering.js?v=3071d0be2be15e';
-import {rollSecret} from './sky-effects.js?v=3071d0be2be15e';
-import {EXPANDED_BASE} from './expanded-content.js?v=3071d0be2be15e';
-import {expandedImage,expandedJSON,loadExpandedAnimation} from './sky-ui.js?v=3071d0be2be15e';
+import {drawSprite,withSpriteFilter} from './sprite-rendering.js?v=297a9eda739823';
+import {rollSecret} from './sky-effects.js?v=297a9eda739823';
+import {EXPANDED_BASE} from './expanded-content.js?v=297a9eda739823';
+import {expandedImage,expandedJSON,loadExpandedAnimation} from './sky-ui.js?v=297a9eda739823';
 
 const TUTORIAL_SOUND='extra-tutorialSfx.ogg';
 const TUTORIAL_START_BEAT=6;
