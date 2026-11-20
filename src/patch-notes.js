@@ -5,6 +5,7 @@ export const PATCH_NOTES = [
       ['Lime and Finale','Lemon Lime, Chlorophyll, Inflorescence and Stargazer join Story Mode. Finale includes its opening video, transformation, flashbacks and original red/blue health bar.'],
       ['All bonus tracks','The remaining 22 Freeplay songs include Identity Crisis, Roomcode, Monotone Attack, Torture, Double Trouble, Monosus and Triple Trouble, with their original charts, audio and stages.'],
       ['Pets and skins','Options > VS. Impostor now contains the original pet and BF-skin choices. Special song casts remain in place according to the source mod.'],
+      ['Airship teleporter','The remote immediately starts Henry’s full campaign, including the teleport video and microphone, sock puppet and stare-down choices. Failed choices return to the item screen. The remote remains usable after unlocking the week.'],
       ['Scripted details','Additional singers, Drippypop partner poses, alternate hit animations, chord afterimages, cinematic bars and the original Defeat game-over scene are supported.'],
     ],
   },

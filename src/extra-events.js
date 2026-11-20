@@ -1,4 +1,4 @@
-import {eventEase} from './song-events.js?v=02aa102e155ced';
+import {eventEase} from './song-events.js?v=5659dbbcbf5f4f';
 
 export const EXTRA_EVENT_SCHEMAS={
   'extra-events-cameraFadeEvent':{color:0,duration:4,shouldFadeIn:false,applyToHud:false},

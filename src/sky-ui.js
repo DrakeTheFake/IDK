@@ -1,4 +1,4 @@
-import {EXPANDED_BASE} from './expanded-content.js?v=02aa102e155ced';
+import {EXPANDED_BASE} from './expanded-content.js?v=5659dbbcbf5f4f';
 
 export async function expandedImage(file) {
   const image=new Image();

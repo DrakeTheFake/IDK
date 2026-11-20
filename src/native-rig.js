@@ -1,4 +1,4 @@
-import {renderProfiler} from './render-profiler.js?v=02aa102e155ced';
+import {renderProfiler} from './render-profiler.js?v=5659dbbcbf5f4f';
 const RIG_BASE='assets/expanded/qt-hd/';
 
 export class NativeRigs {

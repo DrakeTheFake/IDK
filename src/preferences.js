@@ -1,5 +1,5 @@
-import {IMPOSTOR_SKINS,IMPOSTOR_PETS} from './impostor-rest.js?v=02aa102e155ced';
-import {CALIBRATION_BEAT as BEAT,CalibrationAudio,medianDelay} from './audio-timing.js?v=02aa102e155ced';
+import {IMPOSTOR_SKINS,IMPOSTOR_PETS} from './impostor-rest.js?v=5659dbbcbf5f4f';
+import {CALIBRATION_BEAT as BEAT,CalibrationAudio,medianDelay} from './audio-timing.js?v=5659dbbcbf5f4f';
 const MEDIA = 'assets/preferences/';
 const WIDTH = 1280;
 const HEIGHT = 720;
@@ -33,7 +33,7 @@ const GAMEPAD = {
   ...Object.fromEntries([4, 14, 13, 0, 1, 5].map((button, lane) => [SIX_NOTES[lane], [button]])),
 };
 
-import {SECRET_CHANCES} from './sky-effects.js?v=02aa102e155ced';
+import {SECRET_CHANCES} from './sky-effects.js?v=5659dbbcbf5f4f';
 
 export const PREFERENCE_DEFAULTS = Object.freeze({
   naughtyness: true, strumlineBackground: 0, flashingLights: true, cameraZooms: true,
