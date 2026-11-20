@@ -1,5 +1,5 @@
-import {audioClockTime,songClockTime} from './audio-timing.js?v=61949b02c3550a';
-import {STICKER_SOUNDS} from './transitions.js?v=61949b02c3550a';
+import {audioClockTime,songClockTime} from './audio-timing.js?v=02aa102e155ced';
+import {STICKER_SOUNDS} from './transitions.js?v=02aa102e155ced';
 
 export function joinAudioBuffers(context,buffers){
   if(!buffers.length)throw new Error('An audio stem needs at least one part.');

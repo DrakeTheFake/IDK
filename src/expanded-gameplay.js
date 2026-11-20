@@ -1,4 +1,4 @@
-import {applyOfficialCanNote} from './official-polish.js?v=61949b02c3550a';
+import {applyOfficialCanNote} from './official-polish.js?v=02aa102e155ced';
 
 const EXPANDED_NOTE_POSES={ugh:'ugh',hehprettygood:'hehPrettyGood',skyughnote:'ugh',skyheynote:'hey',
   lightcan:'lightCan',kneecan:'kneeCan',kickcan:'kickCan',cockgun:'cock',firegun:'shoot'};

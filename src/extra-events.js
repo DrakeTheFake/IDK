@@ -1,4 +1,4 @@
-import {eventEase} from './song-events.js?v=61949b02c3550a';
+import {eventEase} from './song-events.js?v=02aa102e155ced';
 
 export const EXTRA_EVENT_SCHEMAS={
   'extra-events-cameraFadeEvent':{color:0,duration:4,shouldFadeIn:false,applyToHud:false},
@@ -14,7 +14,7 @@ export const EXTRA_EVENT_SCHEMAS={
     fontSize:32,fontSize2nd:32,isBehindStrumLines:true,isBehindStrumLines2nd:true,isItalic:false,isBold:false,
     hasAntiAliasing:true,isCentered:false,isCentered2nd:false,opacity:1,letterSpacing:0,textBorderColor:0,borderSize:1.25},
 };
-const colors=['#000000','#0000ff','#a52a2a','#00ffff','#808080','#008000','#00ff00','#ff00ff','#ffa500','#800080','#ff0000','transparent','#ffffff','#ffff00'];
+const colors=['#000000','#0000ff','#a52a2a','#00ffff','#808080','#008000','#00ff00','#ff00ff','#ffa500','#800080','#ff0000','transparent','#ffffff','#ffff00','#ed026f'];
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
 const number=(value,fallback=0)=>Number.isFinite(Number(value))?Number(value):fallback;
 export const extraColor=value=>colors[value]||(/^#[\da-f]{6}$/i.test(value)?value:'#000000');

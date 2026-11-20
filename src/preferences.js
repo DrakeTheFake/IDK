@@ -1,4 +1,5 @@
-import {CALIBRATION_BEAT as BEAT,CalibrationAudio,medianDelay} from './audio-timing.js?v=61949b02c3550a';
+import {IMPOSTOR_SKINS,IMPOSTOR_PETS} from './impostor-rest.js?v=02aa102e155ced';
+import {CALIBRATION_BEAT as BEAT,CalibrationAudio,medianDelay} from './audio-timing.js?v=02aa102e155ced';
 const MEDIA = 'assets/preferences/';
 const WIDTH = 1280;
 const HEIGHT = 720;
@@ -32,7 +33,7 @@ const GAMEPAD = {
   ...Object.fromEntries([4, 14, 13, 0, 1, 5].map((button, lane) => [SIX_NOTES[lane], [button]])),
 };
 
-import {SECRET_CHANCES} from './sky-effects.js?v=61949b02c3550a';
+import {SECRET_CHANCES} from './sky-effects.js?v=02aa102e155ced';
 
 export const PREFERENCE_DEFAULTS = Object.freeze({
   naughtyness: true, strumlineBackground: 0, flashingLights: true, cameraZooms: true,
@@ -46,6 +47,7 @@ export const PREFERENCE_DEFAULTS = Object.freeze({
   kapiLanguage:'english',
   extraRotate:true,extraRotateHUD:true,extraShake:true,extraLyrics:true,extraVignette:true,extraCountdown:true,
   vampKey:'Space', vampLanguage:'english',
+  impostorSkin:'none',impostorPet:'nothing',
 });
 
 const validKey = value => typeof value === 'string' && /^(?:Key[A-Z]|Digit[0-9]|Arrow(?:Left|Right|Up|Down)|F(?:[1-9]|1[0-2])|Numpad(?:[0-9]|Add|Subtract|Multiply|Divide|Decimal|Enter)|Bracket(?:Left|Right)|(?:Control|Shift|Alt)(?:Left|Right)|Space|Enter|Escape|Backspace|Tab|Home|End|PageUp|PageDown|Insert|Delete|CapsLock|Backquote|Backslash|Semicolon|Quote|Comma|Period|Slash|Minus|Equal)$/.test(value);
@@ -67,6 +69,8 @@ export function normalizePreferences(raw = {}, base = {}) {
   result.healthDrainLethality = ['safe','oneHP','lethal'].includes(raw.healthDrainLethality) ? raw.healthDrainLethality : 'safe';
   result.qtSawbladeMode = ['default', 'instakill', 'disabled'].includes(raw.qtSawbladeMode) ? raw.qtSawbladeMode : 'default';
   result.skySecretChance = SECRET_CHANCES.includes(raw.skySecretChance) ? raw.skySecretChance : 'Original';
+  result.impostorSkin=Object.hasOwn(IMPOSTOR_SKINS,raw.impostorSkin)?raw.impostorSkin:'none';
+  result.impostorPet=Object.hasOwn(IMPOSTOR_PETS,raw.impostorPet)?raw.impostorPet:'nothing';
   result.vampKey = validKey(raw.vampKey) ? raw.vampKey : 'Space';
   result.vampLanguage = ['english','japanese','spanish'].includes(raw.vampLanguage) ? raw.vampLanguage : 'english';
   result.qtLanguage = raw.qtLanguage === 'spanish' ? 'spanish' : 'english';
@@ -222,7 +226,7 @@ const REWIRED = [
 ];
 
 const ROOT_PAGES = [['preferences', 'Preferences'], ['controls', 'Controls'], ['rewired', 'Rewired Options'],
-  ['lag', 'Lag Adjustment'], ['save', 'Save Data Options'], ['sky', 'Sky Reborn'], ['vamp','VS. Vamp'], ['kapi','Arcade Showdown'],['extra-events','Extra Events']];
+  ['lag', 'Lag Adjustment'], ['save', 'Save Data Options'], ['sky', 'Sky Reborn'], ['vamp','VS. Vamp'], ['kapi','Arcade Showdown'],['impostor','VS. Impostor'],['extra-events','Extra Events']];
 
 const BUTTON_LABELS = ['A','B','X','Y','LB','RB','LT','RT','Select','Start','L3','R3','D-Pad Up','D-Pad Down','D-Pad Left','D-Pad Right','Home'];
 const STICK_LABELS = ['Left','Down','Up','Right'];
@@ -400,6 +404,11 @@ export class PreferencesMenu {
     if (this.page === 'vamp') return [
       choices('vampLanguage','Voiceline Language','Choose the language for the original VS. Vamp game over voices.', ['english','japanese','spanish'],titleCase),
       action('Middle Note Key: '+inputLabel(this.settings.vampKey),()=>{this.rebind={action:'vampKey',device:'keyboard'};}),
+      action('Exit',()=>this.back()),
+    ];
+    if(this.page==='impostor')return [
+      choices('impostorSkin','BF Skin Type','Choose an original Impostor skin. Applies on song entry in supported songs.',Object.keys(IMPOSTOR_SKINS),id=>IMPOSTOR_SKINS[id]),
+      choices('impostorPet','Pet Type','Choose an original Impostor pet. Applies on song entry in supported songs.',Object.keys(IMPOSTOR_PETS),id=>IMPOSTOR_PETS[id]),
       action('Exit',()=>this.back()),
     ];
     if (this.page === 'kapi') return [

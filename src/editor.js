@@ -1,5 +1,5 @@
-import {SONGS,DIFFICULTIES,clamp,parseChart,beatAt} from './core.js?v=61949b02c3550a';
-import {cloneChart,validateChart,blankSection,sectionTimes,retimeChart,copySectionNotes,exportChart,insertChartSection,deleteChartSection} from './chart-tools.js?v=61949b02c3550a';
+import {SONGS,DIFFICULTIES,clamp,parseChart,beatAt} from './core.js?v=02aa102e155ced';
+import {cloneChart,validateChart,blankSection,sectionTimes,retimeChart,copySectionNotes,exportChart,insertChartSection,deleteChartSection} from './chart-tools.js?v=02aa102e155ced';
 
 const STEP=44,CELL=52,LEFT=38,TOP=42,GRID=8*CELL;
 const ED_DIRECTIONS=['LEFT','DOWN','UP','RIGHT'];

@@ -23,6 +23,8 @@ export const EXPANDED_WEEKS = [
   {id:'ImpostorWeekB',name:"LOGGO'S HALLOWEEN",songs:['christmas','spookpostor'],color:'#22C55E',character:'bf'},
   {id:'ImpostorWeekA',name:'ROUSEY RIVAL',songs:['sussy-bussy','rivals','chewmate'],color:'#FF7F50',character:'bf'},
   {id:'ImpostorWeek9',name:'BATTLING THE BOYFRIEND',songs:['titular','greatest-plan','reinforcements','armed'],color:'#F9CF51',character:'bf'},
+  {id:'lime',name:'LIME GREEN JADSPOSTOR',songs:['lemon-lime','chlorophyll','inflorescence','stargazer'],color:'#a9cf39',character:'bf'},
+  {id:'WeekFinale',name:'FINALE',songs:['finale'],color:'#4B0082',character:'bf'},
   {id:'ftbb',name:'FEAT. BAD BUNNY',songs:['celoso','palmas','amarre'],color:'#9C2E26',character:'bf'},
 ];
 

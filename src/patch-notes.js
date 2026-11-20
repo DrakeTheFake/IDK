@@ -1,5 +1,14 @@
 export const PATCH_NOTES = [
   {
+    title:'VS. Impostor: the remaining songs and cosmetics',
+    sections:[
+      ['Lime and Finale','Lemon Lime, Chlorophyll, Inflorescence and Stargazer join Story Mode. Finale includes its opening video, transformation, flashbacks and original red/blue health bar.'],
+      ['All bonus tracks','The remaining 22 Freeplay songs include Identity Crisis, Roomcode, Monotone Attack, Torture, Double Trouble, Monosus and Triple Trouble, with their original charts, audio and stages.'],
+      ['Pets and skins','Options > VS. Impostor now contains the original pet and BF-skin choices. Special song casts remain in place according to the source mod.'],
+      ['Scripted details','Additional singers, Drippypop partner poses, alternate hit animations, chord afterimages, cinematic bars and the original Defeat game-over scene are supported.'],
+    ],
+  },
+  {
     title:'VS. Impostor: Deadly Delusion and the bonus weeks',
     sections:[
       ['Weeks 6 and 7','Deadly Delusion and Humane Heartbeat include their original songs, characters, Grey and Pink stages, dialogue, videos and heart effects.'],

@@ -1,10 +1,10 @@
-import {BunnyShaders,isBadBunny} from './bad-bunny.js?v=61949b02c3550a';
-import {bpmAt} from './core.js?v=61949b02c3550a';
-import {nativeFacing} from './rhythm.js?v=61949b02c3550a';
-import {officialRequiredAssets} from './official-polish.js?v=61949b02c3550a';
-import {naughtyAnimation} from './preferences.js?v=61949b02c3550a';
-import {drawSkyAnimation} from './sky-polish.js?v=61949b02c3550a';
-import {loadExpandedAnimation} from './sky-ui.js?v=61949b02c3550a';
+import {BunnyShaders,isBadBunny} from './bad-bunny.js?v=02aa102e155ced';
+import {bpmAt} from './core.js?v=02aa102e155ced';
+import {nativeFacing} from './rhythm.js?v=02aa102e155ced';
+import {officialRequiredAssets} from './official-polish.js?v=02aa102e155ced';
+import {naughtyAnimation} from './preferences.js?v=02aa102e155ced';
+import {drawSkyAnimation} from './sky-polish.js?v=02aa102e155ced';
+import {loadExpandedAnimation} from './sky-ui.js?v=02aa102e155ced';
 
 const PICO_BASE_LABELS={idle:'Idle',singLEFT:'Left',singDOWN:'Down',singUP:'Up',singRIGHT:'Right'};
 const PICO_ACTION_LABELS={intro1:'Pissed Off',intro2:'Shoot and Return',cock:'Gun Reload',shoot:'Shoot',

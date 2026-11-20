@@ -1,7 +1,7 @@
-import {clamp} from './core.js?v=61949b02c3550a';
-import {EXPANDED_BASE} from './expanded-content.js?v=61949b02c3550a';
+import {clamp} from './core.js?v=02aa102e155ced';
+import {EXPANDED_BASE} from './expanded-content.js?v=02aa102e155ced';
 
-export const isImpostorWeek=choice=>/^impostor-week[1-9AB]$/.test(choice?.source||'');
+export const isImpostorWeek=choice=>String(choice?.source||'').startsWith('impostor-');
 const introVideos={'sussus-moogus':'polus1',sabotage:'polus2',meltdown:'polus3'};
 const lightAnimations={on:{idle:'idle','idle-alt':'idle'},off:{idle:'idle-alt','idle-alt':'idle-alt'}};
 for(const direction of ['LEFT','DOWN','UP','RIGHT'])for(const miss of ['','miss']){
@@ -20,6 +20,7 @@ export function impostorLightAnimations(state,role){
 }
 
 export function impostorIntro(choice){
+  if(choice.baseSong==='finale')return {file:'IMPR_finale.mp4',always:true};
   if(choice.baseSong==='titular')return {henry:true};
   const nextVideos={delusion:'grey',pretender:'pinkwave','voting-time':'voting-time',turbulence:'turbulence',armed:'armed'};
   if(nextVideos[choice.baseSong])return {file:'IMP6_'+nextVideos[choice.baseSong]+'.mp4',...(choice.baseSong==='delusion'?{dialogue:'impostor-dialogue-delusion'}:{})};
@@ -39,14 +40,14 @@ export function impostorIntro(choice){
 export function createImpostorWeek(choice,chart){
   if(!isImpostorWeek(choice))return null;
   const state={beep:null,characters:{},noteFollow:0};
-  const cue=chart.events?.find(event=>event.e==='PlayVideo'&&['meltdown','ejected'].includes(event.v?.path));
+  const cue=chart.events?.find(event=>event.e==='PlayVideo'&&['meltdown','ejected','who'].includes(event.v?.path));
   if(cue){
     const element=document.createElement('video');
     element.muted=true;
     element.playsInline=true;
     element.preload='auto';
-    element.src=EXPANDED_BASE+(cue.v.path==='ejected'?'IMP2_ejected.mp4':'IMP_meltdown.mp4');
-    const end=cue.v.path==='ejected'?chart.events.find(event=>event.e==='extra-events-cameraFlashEvent')?.t:
+    element.src=EXPANDED_BASE+(cue.v.path==='who'?'IMPR_who.mp4':cue.v.path==='ejected'?'IMP2_ejected.mp4':'IMP_meltdown.mp4');
+    const end=cue.v.path==='who'?cue.t+8850:cue.v.path==='ejected'?chart.events.find(event=>event.e==='extra-events-cameraFlashEvent')?.t:
       chart.events.find(event=>event.e==='extra-events-cameraFadeEvent')?.t;
     state.video={element,at:cue.t,end:end??cue.t+4000};
   }
@@ -91,7 +92,7 @@ export function impostorActorVisible(state,role){
 }
 
 export function impostorGroundPosition(choice,role,position,config,groundY,actorScale=1){
-  if(!isImpostorWeek(choice)||['ejected','monotoneejected','airship','airshiperect','turbulence','charles','pretender'].includes(choice.stage)||role==='girlfriend')return position;
+  if(!isImpostorWeek(choice)||['ejected','monotoneejected','airship','airshiperect','turbulence','charles','pretender','warehouse','warehouse_roze','finalem'].includes(choice.stage)||role==='girlfriend')return position;
   // Converted Sparrow sheets contain transparent padding below their declared
   // idle hitbox. Keep one idle baseline so singing poses retain their offsets.
   const correction=(config?.groundOffset||0)*(config?.metadata?.scale||1)*actorScale;

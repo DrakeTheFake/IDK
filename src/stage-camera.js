@@ -1,4 +1,4 @@
-import {eventEase} from './song-events.js?v=61949b02c3550a';
+import {eventEase} from './song-events.js?v=02aa102e155ced';
 
 const mix = (a,b,t) => a+(b-a)*t;
 

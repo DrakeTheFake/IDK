@@ -1,11 +1,11 @@
-import {clamp} from './core.js?v=61949b02c3550a';
-import {eventEase} from './song-events.js?v=61949b02c3550a';
+import {clamp} from './core.js?v=02aa102e155ced';
+import {eventEase} from './song-events.js?v=02aa102e155ced';
 
 export const isDefeat=choice=>choice?.baseSong==='defeat'&&choice?.source==='impostor-week4';
 export const changeComboLimit=(current,delta)=>(Math.round(current)+Math.round(delta)+6)%6;
 export const isHenryContent=record=>record?.week==='ImpostorWeek9'||record?.id==='ImpostorWeek9'||record?.source==='impostor-week9';
 export const campaignUnlocked=(record,henryUnlocked=false)=>!isHenryContent(record)||henryUnlocked;
-export const campaignAutoNote=(choice,note)=>choice?.baseSong==='voting-time'&&['opponent 2 sing','gf sing'].includes(String(note.kind||'').toLowerCase());
+export const campaignAutoNote=(choice,note)=>['voting-time','monotone-attack'].includes(choice?.baseSong)&&['opponent 2 sing','gf sing'].includes(String(note.kind||'').toLowerCase());
 export function henryChoice(option,mobile=false){
   if(!['mic','sock','stare'].includes(option))throw new Error('Unknown Henry choice');
   return {file:'IMP6_henry'+option+(mobile?'-mobile':'')+'.mp4',retry:option!=='mic'};
@@ -113,7 +113,7 @@ export const campaignSilhouette=game=>game.impostor?.stage==='defeaterect2'&&gam
 export function campaignSingers(note){
   const kind=String(note.kind||'').toLowerCase();
   if(kind==='opponent 2 sing')return ['extra'];
-  if(['gf','gf sing'].includes(kind))return ['girlfriend'];
+  if(['gf','gf sing','gfsing'].includes(kind))return ['girlfriend'];
   if(['both','white and black duet'].includes(kind))return [note.player?'player':'opponent','girlfriend'];
   if(['no animation','noanim'].includes(kind))return [];
   return [note.player?'player':'opponent'];

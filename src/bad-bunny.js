@@ -1,4 +1,4 @@
-import {renderProfiler} from './render-profiler.js?v=61949b02c3550a';
+import {renderProfiler} from './render-profiler.js?v=02aa102e155ced';
 export const isBadBunny=choice=>choice?.source==='bad-bunny';
 
 export function bunnyIntro(choice){
