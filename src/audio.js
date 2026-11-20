@@ -1,5 +1,18 @@
-import {audioClockTime,songClockTime} from './audio-timing.js?v=297a9eda739823';
-import {STICKER_SOUNDS} from './transitions.js?v=297a9eda739823';
+import {audioClockTime,songClockTime} from './audio-timing.js?v=12098e4532c833';
+import {STICKER_SOUNDS} from './transitions.js?v=12098e4532c833';
+
+export function joinAudioBuffers(context,buffers){
+  if(!buffers.length)throw new Error('An audio stem needs at least one part.');
+  const sampleRate=buffers[0].sampleRate;
+  if(buffers.some(buffer=>buffer.sampleRate!==sampleRate))throw new Error('Audio parts have incompatible sample rates.');
+  const channels=Math.max(...buffers.map(buffer=>buffer.numberOfChannels));
+  const output=context.createBuffer(channels,buffers.reduce((sum,buffer)=>sum+buffer.length,0),sampleRate);
+  for(let channel=0;channel<channels;channel++){
+    const target=output.getChannelData(channel);let offset=0;
+    for(const buffer of buffers){target.set(buffer.getChannelData(Math.min(channel,buffer.numberOfChannels-1)),offset);offset+=buffer.length;}
+  }
+  return output;
+}
 
 export class AudioEngine {
   constructor(settings){this.settings=settings;this.cache=new Map();this.effects=new Map();this.sources=[];this.menu=null;this.menuFile='';this.position=0;this.running=false;this.ctx=null;this.buffers=null;this.trackOffsets=[];this.trackRoles=[];this.musicURLs=new Set();this.allowVoices=true;this.songRate=1;this.stemGains=[];}
@@ -9,6 +22,20 @@ export class AudioEngine {
   }
   updateVolume(){if(this.master){this.master.gain.value=this.settings.volume;this.fx.gain.value=this.settings.sfxVolume;this.music.gain.value=1;this.voices.gain.value=this.allowVoices?1:0;}if(this.menu)this.menu.volume=this.settings.volume*0.8;}
   async load(url){if(!this.cache.has(url)){const promise=(async()=>{await this.unlock();const r=await fetch(url);if(!r.ok)throw new Error(`Audio unavailable: ${url}`);return this.ctx.decodeAudioData(await r.arrayBuffer());})();this.cache.set(url,promise);promise.catch(()=>this.cache.delete(url));}return this.cache.get(url);}
+  async loadParts(urls){
+    const key=JSON.stringify(urls);
+    if(!this.cache.has(key)){
+      const promise=(async()=>{
+        await this.unlock();
+        const buffers=[];
+        // Decode one part at a time; only the joined stem remains cached.
+        for(const url of urls){const response=await fetch(url);if(!response.ok)throw new Error('Audio unavailable: '+url);buffers.push(await this.ctx.decodeAudioData(await response.arrayBuffer()));}
+        return joinAudioBuffers(this.ctx,buffers);
+      })();
+      this.cache.set(key,promise);promise.catch(()=>this.cache.delete(key));
+    }
+    return this.cache.get(key);
+  }
   playMenu(file='freakyMenu',{loop=true}={}){
     if(this.menuFile===file&&this.menu){this.menu.play().catch(()=>{});return;}
     this.stopMenu();this.menuFile=file;this.menu=new Audio(`${file}.ogg`);this.menu.loop=loop;this.menu.volume=this.settings.volume*0.8;this.menu.play().catch(()=>{});

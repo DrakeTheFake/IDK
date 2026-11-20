@@ -14,6 +14,9 @@ export const EXPANDED_WEEKS = [
   {id:'DpzKapiKapiWeekPyoro',name:'NYO NYO',songs:['dpz_pyoro'],character:'bf'},
   {id:'ImpostorWeek1',name:'POLUS PROBLEMS',songs:['sussus-moogus','sabotage','meltdown'],color:'#BB2D30',character:'bf'},
   {id:'ImpostorWeek2',name:'MIRA MANIA',songs:['sussus-toogus','lights-down','reactor','ejected'],color:'#1F6B2B',character:'bf'},
+  {id:'ImpostorWeek3',name:'AIRSHIP ATROCITIES',songs:['mando','dlow','oversight','danger','double-kill'],color:'#F0B946',character:'bf'},
+  {id:'ImpostorWeek4',name:'DEFEAT',songs:['defeat'],color:'#4B0082',character:'bf'},
+  {id:'ImpostorWeek5',name:'MAGMATIC MONSTROSITY',songs:['ashes','magmatic','boiling-point'],color:'#7B2C2C',character:'bf'},
   {id:'ftbb',name:'FEAT. BAD BUNNY',songs:['celoso','palmas','amarre'],color:'#9C2E26',character:'bf'},
 ];
 
@@ -90,7 +93,7 @@ export class ExpandedContent {
     const alternative = record.characters.altInstrumentals?.includes(instrumental)&&records.find(item=>item.variant===instrumental);
     const tracks = record.tracks.map((track,index)=>index===0&&alternative?alternative.tracks[0]:track);
     return {...record,level:actual,opponent:record.characters.opponent,noteStyle:record.playData.noteStyle,
-      chartUrl:EXPANDED_BASE+record.charts[actual], audioUrls:tracks.map(track=>EXPANDED_BASE+track.file),
+      chartUrl:EXPANDED_BASE+record.charts[actual], audioUrls:tracks.map(track=>track.parts?track.parts.map(file=>EXPANDED_BASE+file):EXPANDED_BASE+track.file),
       audioRoles:tracks.map(track=>track.role), audioOffsets:tracks.map(track=>track.offset)};
   }
 }

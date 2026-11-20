@@ -1,5 +1,14 @@
 export const PATCH_NOTES = [
   {
+    title:'VS. Impostor: Airship, Defeat and Magmatic',
+    sections:[
+      ['Airship Atrocities','Mando, Dlow, Oversight, Danger and Double Kill include their available Pico mixes, original stages, dialogue and video intros.'],
+      ['Defeat','Choose 0–5 allowed combo breaks before the countdown. The health bar is replaced by the break counter; exceeding the selected limit ends the run. Original, Erect, Nightmare and Pico charts are available.'],
+      ['Magmatic Monstrosity','Ashes, Magmatic and Boiling Point include their Pico mixes, original audio, Polus and lava stages, dialogue and Boiling Point intro.'],
+      ['Events and artwork','Dynamic stage and character changes, Double Kill duet notes, Airship scrolling layers and source-resolution sprite animations are supported.'],
+    ],
+  },
+  {
     title:'Lights Down and full-resolution rendering improvements',
     sections:[
       ['Lights Down','Boyfriend and Green use their bright singing poses with the lights on and their dark poses only during the blackout.'],

@@ -78,3 +78,12 @@ QT: Rewired 2.1.1 by JoaDash, FatzFries and contributors uses the installed
 V-Slice package from https://gamebanana.com/mods/566597. The original package
 lists CC BY 4.0 and MIT. Its contributor credits are preserved in
 assets/expanded/qt-rewired-credits.json.
+
+VS. Impostor campaigns 1–5 use the installed V-Slice package, with original
+mod development credited to IMPOSTORM and port contributors listed in
+assets/expanded/impostor-credits.json. Campaigns 3–5 include Airship Atrocities,
+Defeat and Magmatic Monstrosity, their supplied Pico/Erect variations, original
+dialogue, videos, charts and source-resolution artwork. Defeat's combo-break
+selection and the scripted stage/character changes are reimplemented for the
+browser. Oversized audio stems are stored as sample-identical float32 PCM
+parts and joined before playback; no source samples are removed or reduced.

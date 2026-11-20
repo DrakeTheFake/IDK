@@ -1,7 +1,7 @@
-import {clamp} from './core.js?v=297a9eda739823';
-import {EXPANDED_BASE} from './expanded-content.js?v=297a9eda739823';
+import {clamp} from './core.js?v=12098e4532c833';
+import {EXPANDED_BASE} from './expanded-content.js?v=12098e4532c833';
 
-export const isImpostorWeek=choice=>/^impostor-week[12]$/.test(choice?.source||'');
+export const isImpostorWeek=choice=>/^impostor-week[1-5]$/.test(choice?.source||'');
 const introVideos={'sussus-moogus':'polus1',sabotage:'polus2',meltdown:'polus3'};
 const lightAnimations={on:{idle:'idle','idle-alt':'idle'},off:{idle:'idle-alt','idle-alt':'idle-alt'}};
 for(const direction of ['LEFT','DOWN','UP','RIGHT'])for(const miss of ['','miss']){
@@ -20,6 +20,11 @@ export function impostorLightAnimations(state,role){
 }
 
 export function impostorIntro(choice){
+  if(['mando','oversight','danger','boiling-point'].includes(choice.baseSong))return {
+    file:'IMP3_'+(choice.baseSong==='boiling-point'?'boiling':choice.baseSong)+'.mp4',
+    ...(['mando','oversight'].includes(choice.baseSong)?{dialogue:'impostor-dialogue-'+choice.baseSong}:{}),
+  };
+  if(['dlow','ashes','magmatic'].includes(choice.baseSong))return {dialogue:'impostor-dialogue-'+choice.baseSong};
   if(['sussus-toogus','lights-down','reactor'].includes(choice.baseSong))return {
     ...(choice.baseSong==='sussus-toogus'?{file:'IMP2_toogus.mp4'}:{}),dialogue:'impostor-dialogue-'+choice.baseSong};
   const video=introVideos[choice.baseSong];
@@ -82,7 +87,7 @@ export function impostorActorVisible(state,role){
 }
 
 export function impostorGroundPosition(choice,role,position,config,groundY,actorScale=1){
-  if(!isImpostorWeek(choice)||['ejected','monotoneejected'].includes(choice.stage)||role==='girlfriend')return position;
+  if(!isImpostorWeek(choice)||['ejected','monotoneejected','airship','airshiperect'].includes(choice.stage)||role==='girlfriend')return position;
   // Converted Sparrow sheets contain transparent padding below their declared
   // idle hitbox. Keep one idle baseline so singing poses retain their offsets.
   const correction=(config?.groundOffset||0)*(config?.metadata?.scale||1)*actorScale;

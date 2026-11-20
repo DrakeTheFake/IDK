@@ -1,4 +1,4 @@
-import {eventEase} from './song-events.js?v=297a9eda739823';
+import {eventEase} from './song-events.js?v=12098e4532c833';
 
 const STREET_STAGES = new Set(['phillyStreets', 'phillyStreetsErect']);
 const CAN_ASSETS = {
