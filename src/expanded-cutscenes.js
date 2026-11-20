@@ -1,9 +1,9 @@
-import {EXPANDED_BASE} from './expanded-content.js?v=12098e4532c833';
-import {expandedImage,expandedJSON,loadExpandedAnimation} from './sky-ui.js?v=12098e4532c833';
-import {drawRepeatingEffect,rollSecret} from './sky-effects.js?v=12098e4532c833';
-import {drawCenteredSkyAnimation,loadSkyPolishPack} from './sky-polish.js?v=12098e4532c833';
-import {cameraTrack} from './stage-camera.js?v=12098e4532c833';
-import {eventEase} from './song-events.js?v=12098e4532c833';
+import {EXPANDED_BASE} from './expanded-content.js?v=eb47cb3d299c14';
+import {expandedImage,expandedJSON,loadExpandedAnimation} from './sky-ui.js?v=eb47cb3d299c14';
+import {drawRepeatingEffect,rollSecret} from './sky-effects.js?v=eb47cb3d299c14';
+import {drawCenteredSkyAnimation,loadSkyPolishPack} from './sky-polish.js?v=eb47cb3d299c14';
+import {cameraTrack} from './stage-camera.js?v=eb47cb3d299c14';
+import {eventEase} from './song-events.js?v=eb47cb3d299c14';
 
 const EXPANDED_SCENES={
   'darnell-alley':{duration:10000,audio:'darnell-alley.ogg',audioAt:700,fadeIn:2000,fadeInAt:1000,

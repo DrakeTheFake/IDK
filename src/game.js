@@ -1,45 +1,45 @@
-import {renderProfiler} from './render-profiler.js?v=12098e4532c833';
-import {collapseDuplicates,duplicateChoices,VariationSelector} from './duplicate-variations.js?v=12098e4532c833';
-import {SONGS,WEEKS,bpmAt,dancePeriod,DIFFICULTIES,DEFAULT_SETTINGS,HIT_WINDOW,clamp,readJSON,parseChart,beatAt,nearestNote,makeStats,applyHit,applyMiss,accuracy,rank,normalizeSettings,healthAfterOpponentNote} from './core.js?v=12098e4532c833';
-import {builtinTrackOffsets} from './builtin-audio.js?v=12098e4532c833';
-import {songIntro,songOutro,pixelStage,rosesFade} from './story-flow.js?v=12098e4532c833';
-import {ExpandedContent,EXPANDED_BASE,EXPANDED_WEEKS,playerIdentity} from './expanded-content.js?v=12098e4532c833';
-import {ExpandedCutscenes,expandedIntro,expandedOutro,expandedStageIntro,expandedCaptions,scriptedCamera,rollSkyPicoShot,blissfulGreeting} from './expanded-cutscenes.js?v=12098e4532c833';
-import {SkyGallery,expandedImage,expandedJSON,loadExpandedAnimation} from './sky-ui.js?v=12098e4532c833';
-import {expandedNote,drawExpandedRain} from './expanded-gameplay.js?v=12098e4532c833';
-import {PATCH_NOTES} from './patch-notes.js?v=12098e4532c833';
-import {rollSecret} from './sky-effects.js?v=12098e4532c833';
-import {SkyDetails} from './sky-details.js?v=12098e4532c833';
-import {SkyPolish,drawSkyAnimation} from './sky-polish.js?v=12098e4532c833';
-import {actorCameraPoint,nativeChartCamera} from './stage-camera.js?v=12098e4532c833';
-import {officialStageLayout,officialPartnerAnchor,drawOfficialStageFX,officialRequiredSounds,canFire,isOfficialCanNote,stressSkyPartnerX,stressSkyRunner} from './official-polish.js?v=12098e4532c833';
-import {PreferencesMenu,normalizePreferences,bindingFor,noteLaneFor,GamepadPoller,tankmanDeathQuote,naughtyAnimation,skyDeathSounds,ComboFeedback,drawDebugDisplay} from './preferences.js?v=12098e4532c833';
-import {Assets} from './assets.js?v=12098e4532c833';
-import {AudioEngine} from './audio.js?v=12098e4532c833';
-import {ChartEditor} from './editor.js?v=12098e4532c833';
-import {installNativeEditor} from './native-editor.js?v=12098e4532c833';
-import {chartForSixKeys,SIX_DIRECTIONS,partnerDanceFrame,holdProgress,mobileLaneRegion} from './rhythm.js?v=12098e4532c833';
-import {NativeExtras} from './native-extras.js?v=12098e4532c833';
-import {NativeResults,nativeResultRank,nativeCompletion,predictedRank} from './native-results.js?v=12098e4532c833';
-import {StoryIntros} from './story-intros.js?v=12098e4532c833';
-import {PixelUI} from './pixel-ui.js?v=12098e4532c833';
-import {NativeContent} from './native-content.js?v=12098e4532c833';
-import {isSkyRedux,reduxIntro,reduxEnding,reduxStageFrame,reduxProp,reduxStereoPosition} from './sky-redux.js?v=12098e4532c833';
-import {isKapi,isPyoro,kapiIntro,kapiStageProp,kapiPresentation,kapiReceptor,kapiDialogue,kapiPadPosition,noteAnimationFrame} from './kapi.js?v=12098e4532c833';
-import {isImpostorWeek,impostorIntro,createImpostorWeek,updateImpostorEvent,impostorCameraPush,impostorFlash,syncImpostorVideo,closeImpostorVideo,impostorAlpha,impostorProp,impostorActorVisible,impostorGroundPosition,impostorLightAnimations} from './impostor.js?v=12098e4532c833';
-import {isDefeat,changeComboLimit,defeatHealth,campaignEvent,campaignActorAlpha,campaignTwist,campaignProp,campaignActorPosition,campaignSilhouette,campaignSingers,campaignPose,campaignAssets} from './impostor-campaign.js?v=12098e4532c833';
-import {isBadBunny,bunnyIntro,updateBunny,bunnyProp} from './bad-bunny.js?v=12098e4532c833';
-import {applyExtraEvent,updateExtraEvents,extraCameraTransform,drawExtraOverlay,prepareExtraEventSounds} from './extra-events.js?v=12098e4532c833';
-import {TouchControls} from './touch-controls.js?v=12098e4532c833';
-import {ModernFreeplay} from './modern-freeplay.js?v=12098e4532c833';
-import {CharacterSelect} from './character-select.js?v=12098e4532c833';
-import {SceneTransitions} from './transitions.js?v=12098e4532c833';
-import {updateChartEvents} from './song-events.js?v=12098e4532c833';
-import {drawABot} from './abot.js?v=12098e4532c833';
-import {ModLibrary,ModManager} from './mods.js?v=12098e4532c833';
-import {drawModCharacter,drawModStageProps} from './mod-visuals.js?v=12098e4532c833';
-import {isVamp,createVampGameplay,vampHit,updateVampNotes,vampStageCue,vampSceneActors,vampQuote,vampAtmosphere,vampPose} from './vamp.js?v=12098e4532c833';
-import {isQtRewired,createQtGameplay,dodgeQt,updateQt,closeQtVideo,qtProp,qtScene,qtRequiredArt,qtDancePose,qtPresentation,qtSounds} from './qt-rewired.js?v=12098e4532c833';
+import {renderProfiler} from './render-profiler.js?v=eb47cb3d299c14';
+import {collapseDuplicates,duplicateChoices,VariationSelector} from './duplicate-variations.js?v=eb47cb3d299c14';
+import {SONGS,WEEKS,bpmAt,dancePeriod,DIFFICULTIES,DEFAULT_SETTINGS,HIT_WINDOW,clamp,readJSON,parseChart,beatAt,nearestNote,makeStats,applyHit,applyMiss,accuracy,rank,normalizeSettings,healthAfterOpponentNote} from './core.js?v=eb47cb3d299c14';
+import {builtinTrackOffsets} from './builtin-audio.js?v=eb47cb3d299c14';
+import {songIntro,songOutro,pixelStage,rosesFade} from './story-flow.js?v=eb47cb3d299c14';
+import {ExpandedContent,EXPANDED_BASE,EXPANDED_WEEKS,playerIdentity} from './expanded-content.js?v=eb47cb3d299c14';
+import {ExpandedCutscenes,expandedIntro,expandedOutro,expandedStageIntro,expandedCaptions,scriptedCamera,rollSkyPicoShot,blissfulGreeting} from './expanded-cutscenes.js?v=eb47cb3d299c14';
+import {SkyGallery,expandedImage,expandedJSON,loadExpandedAnimation} from './sky-ui.js?v=eb47cb3d299c14';
+import {expandedNote,drawExpandedRain} from './expanded-gameplay.js?v=eb47cb3d299c14';
+import {PATCH_NOTES} from './patch-notes.js?v=eb47cb3d299c14';
+import {rollSecret} from './sky-effects.js?v=eb47cb3d299c14';
+import {SkyDetails} from './sky-details.js?v=eb47cb3d299c14';
+import {SkyPolish,drawSkyAnimation} from './sky-polish.js?v=eb47cb3d299c14';
+import {actorCameraPoint,nativeChartCamera} from './stage-camera.js?v=eb47cb3d299c14';
+import {officialStageLayout,officialPartnerAnchor,drawOfficialStageFX,officialRequiredSounds,canFire,isOfficialCanNote,stressSkyPartnerX,stressSkyRunner} from './official-polish.js?v=eb47cb3d299c14';
+import {PreferencesMenu,normalizePreferences,bindingFor,noteLaneFor,GamepadPoller,tankmanDeathQuote,naughtyAnimation,skyDeathSounds,ComboFeedback,drawDebugDisplay} from './preferences.js?v=eb47cb3d299c14';
+import {Assets} from './assets.js?v=eb47cb3d299c14';
+import {AudioEngine} from './audio.js?v=eb47cb3d299c14';
+import {ChartEditor} from './editor.js?v=eb47cb3d299c14';
+import {installNativeEditor} from './native-editor.js?v=eb47cb3d299c14';
+import {chartForSixKeys,SIX_DIRECTIONS,partnerDanceFrame,holdProgress,mobileLaneRegion} from './rhythm.js?v=eb47cb3d299c14';
+import {NativeExtras} from './native-extras.js?v=eb47cb3d299c14';
+import {NativeResults,nativeResultRank,nativeCompletion,predictedRank} from './native-results.js?v=eb47cb3d299c14';
+import {StoryIntros} from './story-intros.js?v=eb47cb3d299c14';
+import {PixelUI} from './pixel-ui.js?v=eb47cb3d299c14';
+import {NativeContent} from './native-content.js?v=eb47cb3d299c14';
+import {isSkyRedux,reduxIntro,reduxEnding,reduxStageFrame,reduxProp,reduxStereoPosition} from './sky-redux.js?v=eb47cb3d299c14';
+import {isKapi,isPyoro,kapiIntro,kapiStageProp,kapiPresentation,kapiReceptor,kapiDialogue,kapiPadPosition,noteAnimationFrame} from './kapi.js?v=eb47cb3d299c14';
+import {isImpostorWeek,impostorIntro,createImpostorWeek,updateImpostorEvent,impostorCameraPush,impostorFlash,syncImpostorVideo,closeImpostorVideo,impostorAlpha,impostorProp,impostorActorVisible,impostorGroundPosition,impostorLightAnimations} from './impostor.js?v=eb47cb3d299c14';
+import {isDefeat,changeComboLimit,defeatHealth,campaignEvent,campaignActorAlpha,campaignTwist,campaignProp,campaignActorPosition,campaignSilhouette,campaignSingers,campaignPose,campaignAssets} from './impostor-campaign.js?v=eb47cb3d299c14';
+import {isBadBunny,bunnyIntro,updateBunny,bunnyProp} from './bad-bunny.js?v=eb47cb3d299c14';
+import {applyExtraEvent,updateExtraEvents,extraCameraTransform,drawExtraOverlay,prepareExtraEventSounds} from './extra-events.js?v=eb47cb3d299c14';
+import {TouchControls} from './touch-controls.js?v=eb47cb3d299c14';
+import {ModernFreeplay} from './modern-freeplay.js?v=eb47cb3d299c14';
+import {CharacterSelect} from './character-select.js?v=eb47cb3d299c14';
+import {SceneTransitions} from './transitions.js?v=eb47cb3d299c14';
+import {updateChartEvents} from './song-events.js?v=eb47cb3d299c14';
+import {drawABot} from './abot.js?v=eb47cb3d299c14';
+import {ModLibrary,ModManager} from './mods.js?v=eb47cb3d299c14';
+import {drawModCharacter,drawModStageProps} from './mod-visuals.js?v=eb47cb3d299c14';
+import {isVamp,createVampGameplay,vampHit,updateVampNotes,vampStageCue,vampSceneActors,vampQuote,vampAtmosphere,vampPose} from './vamp.js?v=eb47cb3d299c14';
+import {isQtRewired,createQtGameplay,dodgeQt,updateQt,closeQtVideo,qtProp,qtScene,qtRequiredArt,qtDancePose,qtPresentation,qtSounds} from './qt-rewired.js?v=eb47cb3d299c14';
 
 const canvas=document.querySelector('#screen'),ctx=canvas.getContext('2d',{alpha:false});
 const buttonLayer=document.querySelector('#buttons'),announcement=document.querySelector('#announcement');
@@ -355,17 +355,17 @@ function cancelDefeatSelection(){
 }
 function drawDefeatSelection(){
   rect(0,0,1280,720,'#000');
-  const art=nativeContent.data.impostor.defeatSelector,limit=game.impostor.comboBreakLimit;
+  const art=nativeContent.data.impostor.defeatSelector,limit=game.impostor.comboBreakLimit,aspect=viewAspect();
   text(limit+'/5 COMBO BREAKS',640,150,76,'#ff0000','center',3);
   art.dummies.forEach((id,i)=>{
-    const img=assets.images[id],x=200+i*150,y=450+(i>=4?65:i>=2?40:0);
-    if(img)image(id,x,y,img.width,img.height);
-    if(5-i===limit){const arrow=assets.images[art.arrow];if(arrow)image(art.arrow,x,400,arrow.width,arrow.height);}
+    const img=assets.images[id],x=200+i*150,y=566-(img?.height||0)*aspect;
+    if(img)image(id,x,y,img.width,img.height*aspect);
+    if(5-i===limit){const arrow=assets.images[art.arrow];if(arrow)image(art.arrow,x,566-166*aspect,arrow.width,arrow.height*aspect);}
     newButton('defeat-limit-'+(5-i),'Allow '+(5-i)+' combo breaks',x-12,385,148,230,()=>{
       if(limit===5-i)confirmDefeatLimit();else changeDefeatLimit((5-i)-limit);
     });
   });
-  text('LEFT / RIGHT: SELECT    ENTER: START',640,642,23,'#fff','center');
+  text(aspect<.8?'TAP TO SELECT. TAP AGAIN TO START.':'LEFT / RIGHT: SELECT    ENTER: START',640,642,aspect<.8?30:23,'#fff','center');
   newButton('defeat-left','Increase allowed combo breaks',10,340,155,265,()=>changeDefeatLimit(1));
   newButton('defeat-right','Decrease allowed combo breaks',1115,340,155,265,()=>changeDefeatLimit(-1));
   text('<',70,480,42);text('>',1207,480,42);
@@ -787,10 +787,11 @@ function animateNote(actor,note,time,miss=false){
       const length=nativeContent.animationDuration(stageCharacterId(role),pose.name,role==='player')||600;
       actor.forced={name:pose.name,since:time,until:time+length,lock:pose.lock};return;
     }
-    if(!note.player){
+    {
+      const normalRole=actor===actorBF?'player':actor===actorDad?'opponent':'girlfriend';
       const singers=campaignSingers(note);
-      if(singers.length!==1||singers[0]!=='opponent'){
-        for(const role of singers){const singer=role==='girlfriend'?actorGF:actorDad;animateActor(singer,note.lane,time,miss);singer.until=Math.max(singer.until,note.time+note.length);}
+      if(singers.length!==1||singers[0]!==normalRole){
+        for(const role of singers){const singer=role==='girlfriend'?actorGF:role==='player'?actorBF:actorDad;animateActor(singer,note.lane,time,miss);singer.until=Math.max(singer.until,note.time+note.length);}
         return;
       }
     }

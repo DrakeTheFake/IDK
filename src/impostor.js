@@ -1,5 +1,5 @@
-import {clamp} from './core.js?v=12098e4532c833';
-import {EXPANDED_BASE} from './expanded-content.js?v=12098e4532c833';
+import {clamp} from './core.js?v=eb47cb3d299c14';
+import {EXPANDED_BASE} from './expanded-content.js?v=eb47cb3d299c14';
 
 export const isImpostorWeek=choice=>/^impostor-week[1-5]$/.test(choice?.source||'');
 const introVideos={'sussus-moogus':'polus1',sabotage:'polus2',meltdown:'polus3'};

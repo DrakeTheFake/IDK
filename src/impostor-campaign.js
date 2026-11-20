@@ -1,5 +1,5 @@
-import {clamp} from './core.js?v=12098e4532c833';
-import {eventEase} from './song-events.js?v=12098e4532c833';
+import {clamp} from './core.js?v=eb47cb3d299c14';
+import {eventEase} from './song-events.js?v=eb47cb3d299c14';
 
 export const isDefeat=choice=>choice?.baseSong==='defeat'&&choice?.source==='impostor-week4';
 export const changeComboLimit=(current,delta)=>(Math.round(current)+Math.round(delta)+6)%6;
@@ -58,12 +58,11 @@ export function campaignActorPosition(game,role,position,time){
 }
 export const campaignSilhouette=game=>game.impostor?.stage==='defeaterect2'&&game.beat*4>=896&&game.beat*4<992;
 export function campaignSingers(note){
-  if(note.player)return ['player'];
   const kind=String(note.kind||'').toLowerCase();
   if(['gf','gf sing'].includes(kind))return ['girlfriend'];
-  if(['both','white and black duet'].includes(kind))return ['opponent','girlfriend'];
+  if(['both','white and black duet'].includes(kind))return [note.player?'player':'opponent','girlfriend'];
   if(['no animation','noanim'].includes(kind))return [];
-  return ['opponent'];
+  return [note.player?'player':'opponent'];
 }
 export function campaignPose(note){
   const kind=String(note.kind||'').toLowerCase();
